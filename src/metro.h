@@ -247,11 +247,20 @@ struct Object {
   virtual std::string to_string() const = 0;
 
  protected:
-  Object(Type const& type = TYPE_None)
+  Object(Type const& type)
       : type(type),
         ref_count(0)
   {
   }
+};
+
+struct ObjNone : Object {
+  ObjNone()
+      : Object(TYPE_None)
+  {
+  }
+
+  std::string to_string() const override { return "none"; }
 };
 
 template <class T, TypeKind kind>
@@ -505,6 +514,33 @@ class Parser {
   // たべた場合は、ひとつ進めてからその識別子を返す
   // そうでなければエラー
   Token* expect_ident();
+};
+
+//
+// 構文木を評価 ( 実行 )
+class Evaluator {
+ public:
+  Evaluator() {}
+
+  Object* eval(Node* node);
+
+  Object* mt_add(Object* lhs, Object* rhs);
+
+ private:
+};
+
+class MegaGC {
+ public:
+  MegaGC(MegaGC&&) = delete;
+  MegaGC(MegaGC const&) = delete;
+
+  static void execute();
+  static void stop();
+
+  static void append(Object* obj);
+
+ private:
+  MegaGC();
 };
 
 enum ErrorKind {
