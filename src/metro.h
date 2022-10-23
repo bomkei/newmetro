@@ -215,12 +215,11 @@ enum TypeKind {
   TYPE_Char,
   TYPE_String,
   TYPE_Tuple,
-  TYPE_List,
+  TYPE_Vector,
 };
 
 struct Type {
   TypeKind kind;
-  size_t arr_depth;
   bool is_mutable;
   bool is_reference;
 
@@ -228,7 +227,6 @@ struct Type {
 
   Type(TypeKind kind = TYPE_None)
       : kind(kind),
-        arr_depth(0),
         is_mutable(false),
         is_reference(false)
   {
@@ -245,6 +243,7 @@ struct Object {
   size_t ref_count;
 
   virtual std::string to_string() const = 0;
+  virtual Object* clone() const = 0;
 
  protected:
   Object(Type const& type)
@@ -261,6 +260,8 @@ struct ObjNone : Object {
   }
 
   std::string to_string() const override { return "none"; }
+
+  ObjNone* clone() const override { return new ObjNone; }
 };
 
 template <class T, TypeKind kind>
@@ -277,6 +278,11 @@ struct ObjImmediate : Object {
   {
     return std::to_string(this->value);
   }
+
+  ObjImmediate* clone() const override
+  {
+    return new ObjImmediate<T, kind>(this->value);
+  }
 };
 
 using ObjLong = ObjImmediate<int64_t, TYPE_Int>;
@@ -286,9 +292,20 @@ using ObjChar = ObjImmediate<wchar_t, TYPE_Char>;
 struct ObjString : Object {
   std::wstring value;
 
-  ObjString(std::wstring&& val = L"")
-      : value(val)
+  ObjString(std::wstring const& val = L"")
+      : Object(TYPE_String),
+        value(val)
   {
+  }
+
+  std::string to_string() const override
+  {
+    return Utils::Converter::to_utf8(this->value);
+  }
+
+  ObjString* clone() const override
+  {
+    return new ObjString(this->value);
   }
 };
 
@@ -304,6 +321,11 @@ struct ObjFloat : Object {
   std::string to_string() const override
   {
     return std::to_string(this->value);
+  }
+
+  ObjFloat* clone() const override
+  {
+    return new ObjFloat(this->value);
   }
 };
 
@@ -323,13 +345,24 @@ struct ObjTuple : Object {
                [](auto x) { return x->to_string(); }) +
            ")";
   }
+
+  ObjTuple* clone() const override
+  {
+    auto x = new ObjTuple;
+
+    for (auto&& elem : this->elements) {
+      x->elements.emplace_back(elem->clone());
+    }
+
+    return x;
+  }
 };
 
-struct ObjList : Object {
+struct ObjVector : Object {
   std::vector<Object*> list;
 
-  ObjList()
-      : Object(TYPE_List)
+  ObjVector()
+      : Object(TYPE_Vector)
   {
   }
 
@@ -340,6 +373,17 @@ struct ObjList : Object {
                ", ", this->list,
                [](auto x) { return x->to_string(); }) +
            "]";
+  }
+
+  ObjVector* clone() const override
+  {
+    auto x = new ObjVector;
+
+    for (auto&& item : this->list) {
+      x->list.emplace_back(item->clone());
+    }
+
+    return x;
   }
 };
 
@@ -389,12 +433,25 @@ enum NodeKind {
   ND_ArgumentList,
 
   ND_Value,
+  ND_List,
+  ND_Tuple,
+
   ND_Variable,
+  ND_Callfunc,
 
   ND_Add,
   ND_Sub,
   ND_Mul,
   ND_Div,
+
+  ND_If,
+  ND_For,
+  // ND_Loop,
+  ND_While,
+
+  ND_Let,
+
+  ND_Scope,
 
   ND_Function,
 
@@ -408,6 +465,14 @@ value:
 
 variable:
   Token* name;
+
+callfunc:
+  Node* functor;
+
+let:
+  Token* name;
+  Node* type;
+  Node* init;
 
 function:
   Token* name;
@@ -428,6 +493,8 @@ if:
 #define nd_value uni_object
 #define nd_variable_name uni_token
 
+#define nd_callfunc_functor uni_nd[0]
+
 #define nd_func_name uni_token
 #define nd_func_args uni_nd[1]
 #define nd_func_return_type uni_nd[2]
@@ -436,6 +503,10 @@ if:
 #define nd_if_cond uni_nd[0]
 #define nd_if_true uni_nd[1]
 #define nd_if_false uni_nd[2]
+
+#define nd_let_name uni_token
+#define nd_let_type uni_nd[1]
+#define nd_let_init uni_nd[2]
 
 struct Node {
   NodeKind kind;
@@ -493,6 +564,7 @@ class Parser {
   explicit Parser(Token* token);
 
   Node* factor();
+  Node* callfunc();
   Node* mul();
   Node* add();
 
@@ -501,9 +573,6 @@ class Parser {
   Node* parse();
 
  private:
-  Token* cur;
-  Token* ate;
-
   bool check();
   void next();
   bool eat(std::string_view s);
@@ -514,19 +583,65 @@ class Parser {
   // たべた場合は、ひとつ進めてからその識別子を返す
   // そうでなければエラー
   Token* expect_ident();
+
+  //
+  // 型を期待
+  Node* expect_type();
+
+  Token* cur;
+  Token* ate;
 };
 
 //
 // 構文木を評価 ( 実行 )
 class Evaluator {
+  struct Variable {
+    Object* value;
+    std::string_view name;
+
+    Variable(Object* obj, std::string_view name)
+        : value(obj),
+          name(name)
+    {
+    }
+  };
+
+  struct Scope {
+    Node* node;
+    std::vector<Variable> variables;
+
+    bool is_skipped;
+    Object* lastval;
+
+    size_t cur_index;
+
+    explicit Scope(Node* node)
+        : node(node),
+          is_skipped(false),
+          lastval(nullptr),
+          cur_index(0)
+    {
+    }
+  };
+
  public:
   Evaluator() {}
 
   Object* eval(Node* node);
+  Object*& eval_lvalue(Node* node);
 
   Object* mt_add(Object* lhs, Object* rhs);
+  Object* mt_sub(Object* lhs, Object* rhs);
 
  private:
+  Scope& enter_scope(Node* node);
+  void leave_scope();
+
+  Scope& get_cur_scope();
+
+  Object*& get_var(Token* name);
+
+  std::list<Scope> scope_stack;
 };
 
 class MegaGC {
@@ -545,10 +660,16 @@ class MegaGC {
 
 enum ErrorKind {
   ERR_InvalidToken,
+
   ERR_InvalidSyntax,
-  ERR_TypeMismatch,
   ERR_UnexpectedToken,
   ERR_ExpectedIdentifier,
+
+  ERR_TypeMismatch,
+
+  ERR_UndefinedVariable,
+
+  ERR_UninitializedVariable
 };
 
 class Error {

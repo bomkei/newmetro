@@ -3,8 +3,11 @@
 static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_InvalidToken, "invalid token"},
     {ERR_InvalidSyntax, "invalid syntax"},
-    {ERR_TypeMismatch, "type mismatch"},
     {ERR_UnexpectedToken, "unexpected token"},
+    {ERR_ExpectedIdentifier, "expected identifier"},
+    {ERR_TypeMismatch, "type mismatch"},
+    {ERR_UndefinedVariable, "undefined variable name"},
+    {ERR_UninitializedVariable, "variable is not uninitialized"},
 };
 
 static char const* get_err_msg(ErrorKind kind)

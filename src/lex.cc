@@ -2,14 +2,52 @@
 
 static char const punctuators[] =
     "(){}[]<>"
-    "+=*/%"
+    "=+-*/%"
     "|^&"
-    ".,"
+    ".,;:"
     "!?";
 
 static char const* long_punctuators[]{
     "<=>", "<<=", ">>=", "+=", "-=", "*=", "/=",
     "%=",  ">>",  "<<",  ">=", "<=", "==", "!=",
+};
+
+static std::string_view const keywords[]{
+    // type names
+    "none",
+    "int",
+    "float",
+    "bool",
+    "char",
+    "string",
+    "tuple",
+    "vector",
+
+    // control
+    "if",
+    "else",
+    "for",
+    "switch",
+    "match",
+    "loop",
+    "while",
+    "do",
+    "break",
+    "continue",
+    "return",
+
+    // variable definition
+    "let",
+
+    // function
+    "fn",
+    "self",
+
+    // class
+    "class",
+
+    // namespace
+    "namespace",
 };
 
 Lexer::Lexer(Source& source)
@@ -79,6 +117,12 @@ Token* Lexer::lex()
 
     cur->str = {str, len};
     cur->endpos = this->position - pos;
+
+    if (cur->kind == TOK_Ident &&
+        std::find(std::begin(keywords), std::end(keywords),
+                  cur->str) != std::end(keywords)) {
+      cur->kind = TOK_Keyword;
+    }
 
     this->pass_space();
   }

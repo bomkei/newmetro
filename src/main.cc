@@ -12,5 +12,11 @@ int main(int argc, char** argv)
 
   auto node = parser.parse();
 
+  Evaluator eval;
+
+  auto obj = eval.eval(node);
+
+  std::cout << obj->to_string() << std::endl;
+
   return 0;
 }
