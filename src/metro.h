@@ -22,6 +22,7 @@
 #define COL_CYAN "\033[36;5m"
 #define COL_WHITE "\033[37m"
 #define COL_DEFAULT "\033[0m"
+#define COL_ALERTMSG COL_WHITE
 
 #define __FILE_EX__ __file_ex_fn__(__FILE__, "src")
 
@@ -285,9 +286,13 @@ struct ObjImmediate : Object {
   }
 };
 
+template <>
+std::string ObjImmediate<bool, TYPE_Bool>::to_string() const;
+
 using ObjLong = ObjImmediate<int64_t, TYPE_Int>;
-using ObjBool = ObjImmediate<bool, TYPE_Bool>;
 using ObjChar = ObjImmediate<wchar_t, TYPE_Char>;
+
+using ObjBool = ObjImmediate<bool, TYPE_Bool>;
 
 struct ObjString : Object {
   std::wstring value;
@@ -431,8 +436,14 @@ enum NodeKind {
   ND_Type,
   ND_Argument,
 
+  ND_True,
+  ND_False,
+
   ND_Value,
+
   ND_List,
+  ND_EmptyList,
+
   ND_Tuple,
 
   ND_Variable,
@@ -442,6 +453,12 @@ enum NodeKind {
   ND_Sub,
   ND_Mul,
   ND_Div,
+
+  ND_Bigger,         // >
+  ND_BiggerOrEqual,  // >=
+
+  ND_Equal,
+  ND_NotEqual,
 
   ND_If,
   ND_For,
@@ -531,6 +548,18 @@ struct Node {
 
   Node(NodeKind kind, Token* token = nullptr);
   Node(NodeKind kind, Token* token, Node* lhs, Node* rhs);
+
+  // ノード追加
+  Node*& append(Node* node) { return this->list.emplace_back(node); }
+
+  static Node* new_list(NodeKind kind, Token* token, Node* first)
+  {
+    auto x = new Node(kind, token);
+
+    x->list.emplace_back(first);
+
+    return x;
+  }
 };
 
 struct Source {
@@ -572,6 +601,8 @@ class Parser {
   Node* callfunc();
   Node* mul();
   Node* add();
+  Node* compare();
+  Node* equality();
 
   Node* expr();
 
@@ -649,6 +680,7 @@ class Evaluator {
   Scope& get_cur_scope();
 
   Object*& get_var(Token* name);
+  Node* find_func(Token* name);
 
   std::list<Scope> scope_stack;
 };
@@ -677,6 +709,7 @@ enum ErrorKind {
   ERR_TypeMismatch,
 
   ERR_UndefinedVariable,
+  ERR_UndefinedFunction,
 
   ERR_UninitializedVariable,
 

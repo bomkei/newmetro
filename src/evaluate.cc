@@ -60,11 +60,59 @@ Object* Evaluator::eval(Node* node)
     __none:
       return gcnew<ObjNone>();
 
+    case ND_True:
+      return gcnew<ObjBool>(true);
+
+    case ND_False:
+      return gcnew<ObjBool>(false);
+
     case ND_Value:
       return node->nd_value->clone();
 
     case ND_Variable: {
       return this->eval_lvalue(node)->clone();
+    }
+
+    case ND_Callfunc: {
+      auto functor = node->nd_callfunc_functor;
+
+      if (functor->kind == ND_Variable) {
+        auto func = this->find_func(functor->token);
+
+        // todo: check arguments
+
+        auto& func_scope = this->enter_scope(func);
+
+        for (auto act_arg_itr = node->list.begin();
+             auto&& arg : func->list) {
+          auto& var = func_scope.variables.emplace_back(
+              this->eval(*act_arg_itr++), arg->nd_arg_name->str);
+        }
+
+        auto result = this->eval(func->nd_func_code);
+
+        this->leave_scope();
+
+        return result;
+      }
+
+      TODO_IMPL
+
+      goto __none;
+    }
+
+    case ND_If: {
+      auto cond = this->eval(node->nd_if_cond);
+
+      if (!cond->type.equals(TYPE_Bool)) {
+        Error(ERR_TypeMismatch, node->nd_if_cond)
+            .suggest(node->nd_if_cond, "condition must boolean")
+            .emit()
+            .exit();
+      }
+
+      return this->eval(((ObjBool*)cond)->value ? node->nd_if_true
+                                                : node->nd_if_false);
     }
 
     case ND_Let: {
@@ -96,10 +144,6 @@ Object* Evaluator::eval(Node* node)
       this->leave_scope();
 
       return ret;
-    }
-
-    default: {
-      TODO_IMPL;
     }
   }
 
@@ -159,4 +203,18 @@ Object*& Evaluator::get_var(Token* name)
   }
 
   Error(ERR_UndefinedVariable, name).emit().exit();
+}
+
+Node* Evaluator::find_func(Token* name)
+{
+  for (auto&& scope : this->scope_stack) {
+    for (auto&& item : scope.node->list) {
+      if (item->kind == ND_Function &&
+          item->nd_func_name->str == name->str) {
+        return item;
+      }
+    }
+  }
+
+  Error(ERR_UndefinedFunction, name).emit().exit();
 }

@@ -13,6 +13,10 @@ static char const* long_punctuators[]{
 };
 
 static std::string_view const keywords[]{
+    // value
+    "true",
+    "false",
+
     // type names
     "none",
     "int",
