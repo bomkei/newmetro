@@ -2,7 +2,11 @@
 
 int main(int argc, char** argv)
 {
-  std::cout << "Hello!\n";
+  Source source{"test.txt"};
+
+  Lexer lexer{source};
+
+  auto token = lexer.lex();
 
   return 0;
 }

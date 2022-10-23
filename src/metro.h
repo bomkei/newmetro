@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codecvt>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <list>
@@ -10,6 +11,103 @@
 #include <string>
 #include <tuple>
 #include <vector>
+
+#define COL_BLACK "\e[30m"
+#define COL_RED "\e[31m"
+#define COL_GREEN "\033[32m"
+#define COL_YELLOW "\033[33m"
+#define COL_BLUE "\033[34m"
+#define COL_MAGENTA "\033[35m"
+#define COL_CYAN "\033[36;5m"
+#define COL_WHITE "\033[37m"
+#define COL_DEFAULT "\033[0m"
+
+#define __FILE_EX__ __file_ex_fn__(__FILE__, "src")
+
+// alert
+#define alert                                                 \
+  fprintf(stderr, COL_MAGENTA "\t#alert %s:%d\n" COL_DEFAULT, \
+          __FILE_EX__, __LINE__)
+
+// alertphase
+#define alertphase(s)                                         \
+  fprintf(stderr, "\033[35;1m" s COL_DEFAULT " from %s:%d\n", \
+          __FILE_EX__, __LINE__)
+
+// alertmsg
+#define alertmsg(e...)                                         \
+  fprintf(stderr,                                              \
+          COL_YELLOW "\t#message: " COL_ALERTMSG #e COL_YELLOW \
+                     " :from %s:%d\n" COL_DEFAULT,             \
+          __FILE_EX__, __LINE__)
+
+// alertfmt
+#define alertfmt(fmt, e...)                                        \
+  fprintf(stderr,                                                  \
+          COL_YELLOW "\t#message: " fmt COL_ALERTMSG #e COL_YELLOW \
+                     " :from %s:%d\n" COL_DEFAULT,                 \
+          e, __FILE_EX__, __LINE__)
+
+// alertios
+#define alertios(e...)                                      \
+  (std::cerr << COL_YELLOW "\t#message: " COL_ALERTMSG << e \
+             << COL_YELLOW " :from " << __FILE_EX__ << ":"  \
+             << __LINE__ << "\n" COL_DEFAULT)
+
+// alertwarn
+#define alertwarn(e...) alertmsg(COL_RED "#warning: " #e)
+
+// alertctor
+#define alertctor(_Name_)                                     \
+  fprintf(stderr,                                             \
+          COL_GREEN "\t#Constructing " COL_CYAN #_Name_       \
+                    " (%p)" COL_GREEN ":%s:%d\n" COL_DEFAULT, \
+          this, __FILE_EX__, __LINE__)
+
+// alertctor
+#define alertdtor(_Name_)                                            \
+  fprintf(stderr,                                                    \
+          COL_RED "\t#Destructing " COL_CYAN #_Name_ " (%p)" COL_RED \
+                  ":%s:%d\n" COL_DEFAULT,                            \
+          this, __FILE_EX__, __LINE__)
+
+// alertwhere
+#define alertwhere                                                \
+  fprintf(stderr,                                                 \
+          "\t" COL_MAGENTA "# here is in function " COL_YELLOW    \
+          "'%s'" COL_MAGENTA " in " COL_GREEN "%s\n" COL_DEFAULT, \
+          __func__, __FILE_EX__)
+
+#define TODO_IMPL                                                \
+  {                                                              \
+    fprintf(stderr,                                              \
+            COL_RED "\n\n# Not implemented error at " COL_YELLOW \
+                    "%s:%d\n" COL_DEFAULT,                       \
+            __FILE__, __LINE__);                                 \
+    exit(1);                                                     \
+  }
+
+#define debug(e...) \
+  {                 \
+    e               \
+  }
+
+#define crash                                                     \
+  {                                                               \
+    alert;                                                        \
+    fprintf(stderr, "\n#crashed at " __FILE__ ":%d\n", __LINE__); \
+    exit(1);                                                      \
+  }
+
+inline char const* __file_ex_fn__(char const* a, char const* b)
+{
+  size_t const len = strlen(b);
+
+  for (auto p = a;;)
+    if (memcmp(++p, b, len) == 0) return p;
+
+  return a;
+}
 
 namespace Utils {
 
@@ -31,6 +129,14 @@ class Converter {
     return conv.from_bytes(s);
   }
 };
+
+template <class... Args>
+std::string format(char const* fmt, Args&&... args)
+{
+  static char buf[0x1000];
+  sprintf(buf, fmt, std::forward<Args...>(args...));
+  return buf;
+}
 
 }  // namespace Utils
 
@@ -181,6 +287,7 @@ enum NodeKind {
 
   ND_Type,
   ND_Argument,
+  ND_ArgumentList,
 
   ND_Value,
   ND_Variable,
@@ -195,13 +302,60 @@ enum NodeKind {
   ND_Struct,
 };
 
+/*
+
+value:
+  Object* obj;
+
+variable:
+  Token* name;
+
+function:
+  Token* name;
+  Node* args;
+  Node* return_type;
+  Node* code;
+
+if:
+  Node* cond;
+  Node* if_true;
+  Node* if_false;
+
+*/
+
+#define nd_lhs uni_nd[0]
+#define nd_rhs uni_nd[1]
+
+#define nd_value uni_object
+#define nd_variable_name uni_token
+
+#define nd_func_name uni_token
+#define nd_func_args uni_nd[1]
+#define nd_func_return_type uni_nd[2]
+#define nd_func_code uni_nd[3]
+
+#define nd_if_cond uni_nd[0]
+#define nd_if_true uni_nd[1]
+#define nd_if_false uni_nd[2]
+
 struct Node {
   NodeKind kind;
   Token* token;
 
   union {
-    Node* nd[4];
+    Node* uni_nd[4]{0};
+
+    struct {
+      Token* uni_token;
+      Object* uni_object;
+      bool uni_bval[4];
+    };
   };
+
+  std::vector<Node*> list;
+
+  Node(NodeKind kind, Token* token = nullptr);
+  Node(NodeKind kind, Token* token, Node* lhs, Node* rhs);
 };
 
 struct Source {
@@ -233,11 +387,42 @@ class Lexer {
   Source& source;
 };
 
+//
+// 構文解析
+class Parser {
+ public:
+  explicit Parser(Token* token);
+
+  Node* factor();
+  Node* mul();
+  Node* add();
+
+  Node* expr();
+
+  Node* parse();
+
+ private:
+  Token* cur;
+  Token* ate;
+
+  bool check();
+  void next();
+  bool eat(std::string_view s);
+  void expect(std::string_view s);
+
+  //
+  // 識別子を期待する
+  // たべた場合は、ひとつ進めてからその識別子を返す
+  // そうでなければエラー
+  Token* expect_ident();
+};
+
 enum ErrorKind {
   ERR_InvalidToken,
   ERR_InvalidSyntax,
   ERR_TypeMismatch,
   ERR_UnexpectedToken,
+  ERR_ExpectedIdentifier,
 };
 
 class Error {
@@ -247,24 +432,41 @@ class Error {
     LOC_Node
   };
 
- public:
-  Error(ErrorKind kind, size_t pos);
-  Error(ErrorKind kind, Token* token);
+  struct ErrLocation {
+    LocationType type;
 
-  Error& suggest(Token* token, std::string const& msg);
+    size_t begin;
+    size_t end;
+
+    union {
+      size_t pos;
+      Token* token;
+      Node* node;
+    };
+
+    ErrLocation(size_t);
+    ErrLocation(Token*);
+    ErrLocation(Node*);
+
+   private:
+    ErrLocation() {}
+  };
+
+ public:
+  Error(ErrorKind kind, ErrLocation loc);
+
+  Error& suggest(ErrLocation loc, std::string const& msg);
+
+  Error& set_warn();
 
   Error& emit();
-  Error& emit_warn();
 
-  void exit();
+  [[noreturn]] void exit(int code = 1);
 
  private:
   ErrorKind kind;
-  LocationType type;
 
-  union {
-    size_t pos;
-    Token* token;
-    Node* node;
-  };
+  ErrLocation loc;
+
+  bool is_warn;
 };

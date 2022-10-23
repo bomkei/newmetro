@@ -1,4 +1,3 @@
-#include <cstring>
 #include "metro.h"
 
 static char const punctuators[] =
@@ -33,14 +32,17 @@ Token* Lexer::lex()
 
     auto str = this->get_raw_ptr();
     size_t len = 0;
+    TokenKind kind;
 
     // digits
     if (isdigit(ch)) {
+      kind = TOK_Immediate;
       len = this->pass_while(isalnum);
     }
 
     // identifier
     else if (isalpha(ch) || ch == '_') {
+      kind = TOK_Ident;
       len = this->pass_while(
           [](char c) { return isalnum(c) || c == '_'; });
     }
@@ -49,21 +51,35 @@ Token* Lexer::lex()
     else if (auto r = std::find(punctuators, std::end(punctuators),
                                 this->peek());
              r != std::end(punctuators)) {
+      kind = TOK_Punctuator;
       str = r;
       len = 1;
+      this->position++;
     }
 
     // long punctuator
     else {
+      kind = TOK_Punctuator;
+
       for (auto&& pu : long_punctuators) {
         if ((len = this->match(pu)) != -1) {
           str = pu;
+          this->position += len;
+
           goto _found;
         }
       }
 
+      Error(ERR_InvalidToken, pos).emit().exit();
+
     _found:;
     }
+
+    cur = new Token(kind, cur, pos);
+    cur->str = {str, len};
+    cur->endpos = this->position - pos;
+
+    this->pass_space();
   }
 
   cur = new Token(TOK_End, cur, this->position);
