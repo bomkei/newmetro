@@ -10,18 +10,72 @@ Node* Parser::factor()
 {
   switch (this->cur->kind) {
     case TOK_Immediate: {
+      auto node = new Node(ND_Value, this->cur);
+
+      switch (this->cur->imm_kind) {
+        case TYPE_Int:
+          node->nd_value =
+              new ObjLong(std::stoi(this->cur->str.data()));
+
+          break;
+
+        default:
+          TODO_IMPL
+      }
+
+      this->next();
+
+      return node;
+    }
+
+    case TOK_Ident: {
       break;
     }
   }
+
+  Error(ERR_InvalidSyntax, this->cur).emit().exit();
 }
 
-Node* Parser::mul() {}
+Node* Parser::mul()
+{
+  auto x = this->factor();
 
-Node* Parser::add() {}
+  while (this->check()) {
+    if (this->eat("*"))
+      x = new Node(ND_Mul, this->ate, x, this->factor());
+    else if (this->eat("/"))
+      x = new Node(ND_Div, this->ate, x, this->factor());
+    else
+      break;
+  }
 
-Node* Parser::expr() {}
+  return x;
+}
 
-Node* Parser::parse() {}
+Node* Parser::add()
+{
+  auto x = this->mul();
+
+  while (this->check()) {
+    if (this->eat("+"))
+      x = new Node(ND_Add, this->ate, x, this->mul());
+    else if (this->eat("-"))
+      x = new Node(ND_Sub, this->ate, x, this->mul());
+    else
+      break;
+  }
+
+  return x;
+}
+
+Node* Parser::expr() { return this->add(); }
+
+Node* Parser::parse()
+{
+  auto node = this->expr();
+
+  return node;
+}
 
 bool Parser::check() { return this->cur->kind != TOK_End; }
 

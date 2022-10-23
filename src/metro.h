@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <codecvt>
 #include <cstring>
 #include <functional>
@@ -111,6 +112,80 @@ inline char const* __file_ex_fn__(char const* a, char const* b)
 
 namespace Utils {
 
+using std::to_string;
+
+template <class... Args>
+std::string format(char const* fmt, Args&&... args)
+{
+  static char buf[0x1000];
+  sprintf(buf, fmt, std::forward<Args...>(args...));
+  return buf;
+}
+
+template <class callable_t>
+using return_type_of_t = typename decltype(std::function{
+    std::declval<callable_t>(0)}())::result_type;
+
+template <class T>
+concept convertible_to_string_with_method = requires(T const& x)
+{
+  {
+    x.to_string()
+    } -> std::convertible_to<std::string>;
+};
+
+template <convertible_to_string_with_method T>
+inline auto to_string(T const& x) -> std::string
+{
+  return x.to_string();
+}
+
+template <class T>
+concept convertible_to_string =
+    convertible_to_string_with_method<T> ||
+    std::is_convertible_v<T, std::string>;
+
+template <convertible_to_string T>
+std::string join(std::string const& s, std::vector<T> const& vec)
+{
+  std::string ret;
+
+  for (auto last = &*vec.rbegin(); auto&& x : vec) {
+    ret += to_string(x);
+    if (last != &x) ret += s;
+  }
+
+  return ret;
+}
+
+template <class T, class F = std::function<std::string(T)>>
+std::string join(std::string const& s, std::vector<T> const& vec,
+                 F conv)
+{
+  std::string ret;
+
+  for (auto last = &*vec.rbegin(); auto&& x : vec) {
+    ret += conv(x);
+    if (last != &x) ret += s;
+  }
+
+  return ret;
+}
+
+template <class T, class F = std::function<std::string(T)>>
+std::string join(std::string const& s, std::list<T> const& list,
+                 F conv)
+{
+  std::string ret;
+
+  for (auto last = &*list.rbegin(); auto&& x : list) {
+    ret += conv(x);
+    if (last != &x) ret += s;
+  }
+
+  return ret;
+}
+
 class Converter {
   static inline std::wstring_convert<std::codecvt_utf8<wchar_t>,
                                      wchar_t>
@@ -129,14 +204,6 @@ class Converter {
     return conv.from_bytes(s);
   }
 };
-
-template <class... Args>
-std::string format(char const* fmt, Args&&... args)
-{
-  static char buf[0x1000];
-  sprintf(buf, fmt, std::forward<Args...>(args...));
-  return buf;
-}
 
 }  // namespace Utils
 
@@ -187,11 +254,11 @@ struct Object {
   }
 };
 
-template <class T, TypeKind kind, T val>
+template <class T, TypeKind kind>
 struct ObjImmediate : Object {
   T value;
 
-  ObjImmediate()
+  ObjImmediate(T val)
       : Object(kind),
         value(val)
   {
@@ -199,15 +266,13 @@ struct ObjImmediate : Object {
 
   std::string to_string() const override
   {
-    return std::to_string(value);
+    return std::to_string(this->value);
   }
 };
 
-using ObjLong = ObjImmediate<int64_t, TYPE_Int, 0>;
-// using ObjFloat = ObjImmediate<float, TYPE_Float, 0>;
-using ObjBool = ObjImmediate<bool, TYPE_Bool, false>;
-using ObjChar = ObjImmediate<wchar_t, TYPE_Char, 0>;
-// using ObjString = ObjImmediate<std::wstring, TYPE_String, L"">;
+using ObjLong = ObjImmediate<int64_t, TYPE_Int>;
+using ObjBool = ObjImmediate<bool, TYPE_Bool>;
+using ObjChar = ObjImmediate<wchar_t, TYPE_Char>;
 
 struct ObjString : Object {
   std::wstring value;
@@ -226,6 +291,11 @@ struct ObjFloat : Object {
         value(val)
   {
   }
+
+  std::string to_string() const override
+  {
+    return std::to_string(this->value);
+  }
 };
 
 struct ObjTuple : Object {
@@ -235,6 +305,15 @@ struct ObjTuple : Object {
       : Object(TYPE_Tuple)
   {
   }
+
+  std::string to_string() const override
+  {
+    return "(" +
+           Utils::join<Object*>(
+               ", ", this->elements,
+               [](auto x) { return x->to_string(); }) +
+           ")";
+  }
 };
 
 struct ObjList : Object {
@@ -243,6 +322,15 @@ struct ObjList : Object {
   ObjList()
       : Object(TYPE_List)
   {
+  }
+
+  std::string to_string() const override
+  {
+    return "[" +
+           Utils::join<Object*>(
+               ", ", this->list,
+               [](auto x) { return x->to_string(); }) +
+           "]";
   }
 };
 
@@ -256,6 +344,7 @@ enum TokenKind {
 
 struct Token {
   TokenKind kind;
+  TypeKind imm_kind;
   Token* prev;
   Token* next;
 
@@ -265,6 +354,7 @@ struct Token {
 
   Token(TokenKind kind)
       : kind(kind),
+        imm_kind(TYPE_None),
         prev(nullptr),
         next(nullptr),
         pos(0),

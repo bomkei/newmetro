@@ -8,5 +8,9 @@ int main(int argc, char** argv)
 
   auto token = lexer.lex();
 
+  Parser parser{token};
+
+  auto node = parser.parse();
+
   return 0;
 }
