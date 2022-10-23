@@ -55,6 +55,8 @@ Object* Evaluator::eval(Node* node)
 
   switch (node->kind) {
     case ND_None:
+    case ND_Struct:
+    case ND_Function:
     __none:
       return gcnew<ObjNone>();
 
@@ -94,6 +96,10 @@ Object* Evaluator::eval(Node* node)
       this->leave_scope();
 
       return ret;
+    }
+
+    default: {
+      TODO_IMPL;
     }
   }
 

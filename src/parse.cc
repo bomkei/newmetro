@@ -125,12 +125,48 @@ Node* Parser::add()
 
 Node* Parser::expr() { return this->add(); }
 
+Node* Parser::function()
+{
+  if (this->eat("fn")) {
+    auto node = new Node(ND_Function, this->ate);
+
+    node->nd_func_name = this->expect_ident();
+
+    this->expect("(");
+
+    if (!this->eat(")")) {
+      do {
+        auto& arg = node->list.emplace_back(new Node(ND_Argument));
+
+        arg->nd_arg_name = this->expect_ident();
+
+        this->expect(":");
+
+        arg->nd_arg_type = this->expect_type();
+
+      } while (this->eat(","));
+
+      this->expect(")");
+    }
+
+    this->expect("->");
+
+    node->nd_func_return_type = this->expect_type();
+
+    node->nd_func_code = this->expect_scope();
+
+    return node;
+  }
+
+  return this->expr();
+}
+
 Node* Parser::parse()
 {
   auto node = new Node(ND_Scope);
 
   while (this->check()) {
-    node->list.emplace_back(this->expr());
+    node->list.emplace_back(this->function());
 
     if (this->cur->prev->str == ";" || this->eat(";")) {
       if (this->check()) {
@@ -176,9 +212,10 @@ void Parser::expect(std::string_view s)
   }
 }
 
-Token* Parser::expect_ident()
+Token* Parser::expect_ident(bool allow_kwd)
 {
-  if (this->cur->kind == TOK_Ident) {
+  if (this->cur->kind == TOK_Ident ||
+      (allow_kwd && this->cur->kind == TOK_Keyword)) {
     this->ate = this->cur;
     this->next();
 
@@ -190,11 +227,46 @@ Token* Parser::expect_ident()
 
 Node* Parser::expect_type()
 {
-  auto node = new Node(ND_Type, this->expect_ident());
+  auto node = new Node(ND_Type, this->expect_ident(true));
 
   // todo: < ... >
   // todo: check mutable
   // todo: check reference
 
   return node;
+}
+
+Node* Parser::expect_scope()
+{
+  auto node = new Node(ND_Scope, this->cur);
+
+  this->expect("{");
+
+  // empty scope
+  if (this->eat("}")) {
+    return node;
+  }
+
+  while (this->check()) {
+    auto& item = node->list.emplace_back(this->expr());
+
+    if (this->eat(";") || this->cur->prev->str == ";") {
+      if (this->eat("}")) {
+        node->list.emplace_back(new Node(ND_None));
+        return node;
+      }
+
+      continue;
+    }
+
+    if (this->eat("}")) {
+      return node;
+    }
+
+    if (this->cur->prev->str != "}") {
+      this->expect("}");
+    }
+  }
+
+  Error(ERR_BracketNotClosed, node->token).emit().exit();
 }

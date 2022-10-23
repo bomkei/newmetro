@@ -8,7 +8,7 @@ static char const punctuators[] =
     "!?";
 
 static char const* long_punctuators[]{
-    "<=>", "<<=", ">>=", "+=", "-=", "*=", "/=",
+    "<=>", "<<=", ">>=", "->", "+=", "-=", "*=", "/=",
     "%=",  ">>",  "<<",  ">=", "<=", "==", "!=",
 };
 
@@ -88,16 +88,6 @@ Token* Lexer::lex()
     }
 
     // punctuator
-    else if (auto r = std::find(punctuators, std::end(punctuators),
-                                this->peek());
-             r != std::end(punctuators)) {
-      cur->kind = TOK_Punctuator;
-      str = r;
-      len = 1;
-      this->position++;
-    }
-
-    // long punctuator
     else {
       cur->kind = TOK_Punctuator;
 
@@ -108,6 +98,16 @@ Token* Lexer::lex()
 
           goto _found;
         }
+      }
+
+      if (auto r = std::find(punctuators, std::end(punctuators),
+                             this->peek());
+          r != std::end(punctuators)) {
+        cur->kind = TOK_Punctuator;
+        str = r;
+        len = 1;
+        this->position++;
+        goto _found;
       }
 
       Error(ERR_InvalidToken, pos).emit().exit();

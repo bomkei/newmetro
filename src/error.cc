@@ -8,6 +8,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_TypeMismatch, "type mismatch"},
     {ERR_UndefinedVariable, "undefined variable name"},
     {ERR_UninitializedVariable, "variable is not uninitialized"},
+    {ERR_BracketNotClosed, "bracket not closed"},
 };
 
 static char const* get_err_msg(ErrorKind kind)
@@ -27,8 +28,8 @@ Error::ErrLocation::ErrLocation(size_t pos)
 }
 
 Error::ErrLocation::ErrLocation(Token* token)
-    : begin(0),
-      end(0),
+    : begin(token->pos),
+      end(token->endpos),
       token(token)
 {
 }
@@ -62,7 +63,8 @@ Error& Error::emit()
 {
   auto msg = get_err_msg(this->kind);
 
-  std::cout << "error: " << msg << std::endl;
+  std::cout << "error: " << this->loc.begin << " " << msg
+            << std::endl;
 
   return *this;
 }

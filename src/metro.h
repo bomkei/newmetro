@@ -430,7 +430,6 @@ enum NodeKind {
 
   ND_Type,
   ND_Argument,
-  ND_ArgumentList,
 
   ND_Value,
   ND_List,
@@ -459,6 +458,10 @@ enum NodeKind {
 };
 
 /*
+
+argument:
+  Token* name
+  Node* type
 
 value:
   Object* obj;
@@ -490,15 +493,17 @@ if:
 #define nd_lhs uni_nd[0]
 #define nd_rhs uni_nd[1]
 
+#define nd_arg_name uni_token
+#define nd_arg_type uni_nd[1]
+
 #define nd_value uni_object
 #define nd_variable_name uni_token
 
 #define nd_callfunc_functor uni_nd[0]
 
 #define nd_func_name uni_token
-#define nd_func_args uni_nd[1]
-#define nd_func_return_type uni_nd[2]
-#define nd_func_code uni_nd[3]
+#define nd_func_return_type uni_nd[1]
+#define nd_func_code uni_nd[2]
 
 #define nd_if_cond uni_nd[0]
 #define nd_if_true uni_nd[1]
@@ -570,6 +575,8 @@ class Parser {
 
   Node* expr();
 
+  Node* function();
+
   Node* parse();
 
  private:
@@ -582,11 +589,13 @@ class Parser {
   // 識別子を期待する
   // たべた場合は、ひとつ進めてからその識別子を返す
   // そうでなければエラー
-  Token* expect_ident();
+  Token* expect_ident(bool allow_kwd = false);
 
   //
   // 型を期待
   Node* expect_type();
+
+  Node* expect_scope();
 
   Token* cur;
   Token* ate;
@@ -669,7 +678,9 @@ enum ErrorKind {
 
   ERR_UndefinedVariable,
 
-  ERR_UninitializedVariable
+  ERR_UninitializedVariable,
+
+  ERR_BracketNotClosed
 };
 
 class Error {
