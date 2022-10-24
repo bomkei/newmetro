@@ -6,6 +6,52 @@ Parser::Parser(Token* token)
 {
 }
 
+Node* Parser::atom()
+{
+  if (this->eat("true")) {
+    return new Node(ND_True, this->ate);
+  }
+
+  if (this->eat("false")) {
+    return new Node(ND_False, this->ate);
+  }
+
+  switch (this->cur->kind) {
+    //
+    // 即値
+    case TOK_Immediate: {
+      auto node = new Node(ND_Value, this->cur);
+
+      switch (this->cur->imm_kind) {
+        case TYPE_Int:
+          node->nd_value =
+              new ObjLong(std::stoi(this->cur->str.data()));
+
+          break;
+
+        default:
+          TODO_IMPL
+      }
+
+      this->next();
+
+      return node;
+    }
+
+    //
+    // 変数
+    case TOK_Ident: {
+      auto node = new Node(ND_Variable, this->cur);
+
+      this->next();
+
+      return node;
+    }
+  }
+
+  Error(ERR_InvalidSyntax, this->cur).emit().exit();
+}
+
 Node* Parser::factor()
 {
   auto token = this->cur;
@@ -49,14 +95,13 @@ Node* Parser::factor()
     return node;
   }
 
-  if (this->eat("true")) {
-    return new Node(ND_True, this->ate);
-  }
+  return this->atom();
+}
 
-  if (this->eat("false")) {
-    return new Node(ND_False, this->ate);
-  }
-
+//
+// ステートメント
+Node* Parser::statement()
+{
   //
   // if
   if (this->eat("if")) {
@@ -77,17 +122,18 @@ Node* Parser::factor()
   }
 
   //
-  // 変数定義
+  // let - 変数定義
   if (this->eat("let")) {
     auto node = new Node(ND_Let, this->ate);
 
+    // 変数名
     node->nd_let_name = this->expect_ident();
 
-    if (this->eat(":")) {
+    if (this->eat(":")) {  // 型指定
       node->nd_let_type = this->expect_type();
     }
 
-    if (this->eat("=")) {
+    if (this->eat("=")) {  // 初期化式
       node->nd_let_init = this->expr();
     }
 
@@ -96,45 +142,12 @@ Node* Parser::factor()
     return node;
   }
 
-  switch (this->cur->kind) {
-    //
-    // 即値
-    case TOK_Immediate: {
-      auto node = new Node(ND_Value, this->cur);
-
-      switch (this->cur->imm_kind) {
-        case TYPE_Int:
-          node->nd_value =
-              new ObjLong(std::stoi(this->cur->str.data()));
-
-          break;
-
-        default:
-          TODO_IMPL
-      }
-
-      this->next();
-
-      return node;
-    }
-
-    //
-    // 変数
-    case TOK_Ident: {
-      auto node = new Node(ND_Variable, this->cur);
-
-      this->next();
-
-      return node;
-    }
-  }
-
-  Error(ERR_InvalidSyntax, this->cur).emit().exit();
+  return this->factor();
 }
 
 Node* Parser::callfunc()
 {
-  auto x = this->factor();
+  auto x = this->statement();
 
   if (this->eat("(")) {
     auto nd = new Node(ND_Callfunc, this->ate);

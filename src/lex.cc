@@ -55,16 +55,19 @@ static std::string_view const keywords[]{
 };
 
 Lexer::Lexer(Source& source)
-    : position(0),
-      length(source.text.length()),
-      source(source)
+    : source(source),
+      position(0),
+      length(source.text.length())
 {
+  this->initialize();
 }
 
 Token* Lexer::lex()
 {
   Token top{TOK_End};
   Token* cur = &top;
+
+  auto line_itr = this->line_list.cbegin();
 
   this->pass_space();
 
@@ -128,12 +131,30 @@ Token* Lexer::lex()
       cur->kind = TOK_Keyword;
     }
 
+    while (line_itr->second <= this->position) {
+      line_itr++;
+    }
+
+    cur->linenum = line_itr - this->line_list.begin() + 1;
+
     this->pass_space();
   }
 
   cur = new Token(TOK_End, cur, this->position);
 
   return top.next;
+}
+
+void Lexer::initialize()
+{
+  size_t j = 0;
+
+  for (size_t i = 0; i < this->length; i++) {
+    if (this->source.text[i] == '\n') {
+      this->line_list.emplace_back(j, i);
+      j = i;
+    }
+  }
 }
 
 bool Lexer::check() { return this->position < this->length; }

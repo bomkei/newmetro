@@ -15,7 +15,7 @@ bool Source::readfile(char const* path)
   }
 
   while (std::getline(ifs, line)) {
-    this->text += line;
+    this->text += line + '\n';
   }
 
   return true;

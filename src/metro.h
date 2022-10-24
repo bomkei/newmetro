@@ -407,8 +407,10 @@ struct Token {
   Token* next;
 
   std::string_view str;
+
   size_t pos;
   size_t endpos;
+  size_t linenum;
 
   Token(TokenKind kind)
       : kind(kind),
@@ -416,7 +418,8 @@ struct Token {
         prev(nullptr),
         next(nullptr),
         pos(0),
-        endpos(0)
+        endpos(0),
+        linenum(0)
   {
   }
 
@@ -578,6 +581,8 @@ class Lexer {
   Token* lex();
 
  private:
+  void initialize();
+
   bool check();
   char peek();
   int match(std::string_view s);
@@ -586,9 +591,11 @@ class Lexer {
 
   char const* get_raw_ptr();
 
+  Source& source;
   size_t position;
   size_t const length;
-  Source& source;
+
+  std::vector<std::pair<size_t, size_t>> line_list;
 };
 
 //
@@ -597,8 +604,12 @@ class Parser {
  public:
   explicit Parser(Token* token);
 
+  Node* atom();
   Node* factor();
+
+  Node* statement();
   Node* callfunc();
+
   Node* mul();
   Node* add();
   Node* compare();

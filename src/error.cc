@@ -34,7 +34,14 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
       break;
 
     case ND_List:
-    case ND_Tuple:
+    case ND_Tuple: {
+      if (node->list.empty()) {
+        return {node->token, node->token->next};
+      }
+
+      return {node->token,
+              get_token_range(*node->list.rbegin()).second};
+    }
 
     default:
       alertfmt("%d", node->kind);
@@ -89,7 +96,7 @@ Error& Error::emit()
 {
   auto msg = get_err_msg(this->kind);
 
-  std::cout << "error: " << this->loc.token->str << " " << msg
+  std::cout << "error: " << this->loc.token->linenum << " " << msg
             << std::endl;
 
   return *this;
