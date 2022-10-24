@@ -6,6 +6,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_UnexpectedToken, "unexpected token"},
     {ERR_ExpectedIdentifier, "expected identifier"},
     {ERR_TypeMismatch, "type mismatch"},
+    {ERR_ExpectedLeftValue, "expected lvalue expression"},
     {ERR_UndefinedVariable, "undefined variable name"},
     {ERR_UndefinedFunction, "undefined function name"},
     {ERR_UninitializedVariable, "variable is not uninitialized"},

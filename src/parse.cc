@@ -226,9 +226,9 @@ Node* Parser::equality()
 
   while (this->check()) {
     if (this->eat("=="))
-      x = new Node(ND_Equal, this->ate, x, this->add());
+      x = new Node(ND_Equal, this->ate, x, this->compare());
     else if (this->eat("!="))
-      x = new Node(ND_NotEqual, this->ate, x, this->add());
+      x = new Node(ND_NotEqual, this->ate, x, this->compare());
     else
       break;
   }
@@ -236,7 +236,21 @@ Node* Parser::equality()
   return x;
 }
 
-Node* Parser::expr() { return this->equality(); }
+Node* Parser::assign()
+{
+  auto x = this->equality();
+
+  if (this->eat("="))
+    x = new Node(ND_Assign, this->ate, x, this->assign());
+
+  if (this->eat("+="))
+    x = new Node(ND_Assign, this->ate, x,
+                 new Node(ND_Add, this->ate, x, this->assign()));
+
+  return x;
+}
+
+Node* Parser::expr() { return this->assign(); }
 
 Node* Parser::function()
 {

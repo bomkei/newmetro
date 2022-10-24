@@ -145,6 +145,52 @@ Object* Evaluator::eval(Node* node)
 
       return ret;
     }
+
+    case ND_Bigger:
+    case ND_BiggerOrEqual:
+    case ND_Equal:
+    case ND_NotEqual: {
+      std::list<Node*> items{node};
+      Node* x = node->nd_lhs;
+
+      for (; x->kind >= ND_Bigger && x->kind <= ND_NotEqual;
+           x = x->nd_lhs) {
+        items.emplace_front(x);
+      }
+
+      Object* lhs = this->eval(x);
+
+      for (auto&& item : items) {
+        auto rhs = this->eval(item->nd_rhs);
+
+        switch (item->kind) {
+          case ND_Bigger:
+            switch (lhs->type.kind) {
+              case TYPE_Int:
+                if (((ObjLong*)lhs)->value <= ((ObjLong*)rhs)->value)
+                  goto _fail;
+
+                break;
+            }
+            break;
+        }
+
+        lhs = rhs;
+      }
+
+      return gcnew<ObjBool>(true);
+
+    _fail:
+      return gcnew<ObjBool>(false);
+    }
+
+    case ND_Assign: {
+      auto& dest = this->eval_lvalue(node->nd_lhs);
+
+      dest = this->eval(node->nd_rhs);
+
+      return dest;
+    }
   }
 
   auto lhs = this->eval(node->nd_lhs);
@@ -177,7 +223,7 @@ Object*& Evaluator::eval_lvalue(Node* node)
     }
   }
 
-  crash;
+  Error(ERR_ExpectedLeftValue, node).emit().exit();
 }
 
 Evaluator::Scope& Evaluator::enter_scope(Node* node)

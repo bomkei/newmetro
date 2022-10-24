@@ -459,9 +459,12 @@ enum NodeKind {
 
   ND_Bigger,         // >
   ND_BiggerOrEqual,  // >=
-
   ND_Equal,
   ND_NotEqual,
+
+  ND_Compare,
+
+  ND_Assign,
 
   ND_If,
   ND_For,
@@ -614,6 +617,7 @@ class Parser {
   Node* add();
   Node* compare();
   Node* equality();
+  Node* assign();
 
   Node* expr();
 
@@ -718,6 +722,7 @@ enum ErrorKind {
   ERR_ExpectedIdentifier,
 
   ERR_TypeMismatch,
+  ERR_ExpectedLeftValue,
 
   ERR_UndefinedVariable,
   ERR_UndefinedFunction,
