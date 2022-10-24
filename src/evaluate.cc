@@ -5,7 +5,7 @@ T* gcnew(Args&&... args)
 {
   T* obj;
 
-  if constexpr (sizeof...(args)) {
+  if constexpr (sizeof...(args) != 0) {
     obj = new T(std::forward<Args...>(args...));
   }
   else {
