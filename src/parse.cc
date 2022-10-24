@@ -103,6 +103,38 @@ Node* Parser::factor()
 Node* Parser::statement()
 {
   //
+  // function
+  if (this->eat("fn")) {
+    auto node = new Node(ND_Function, this->ate);
+
+    this->expect("(");
+
+    if (!this->eat(")")) {
+      do {
+        auto& arg =
+            node->list.emplace_back(new Node(ND_Argument, this->cur));
+
+        arg->nd_arg_name = this->expect_ident();
+
+        this->expect(":");
+
+        arg->nd_arg_type = this->expect_type();
+
+      } while (this->eat(","));
+
+      this->expect(")");
+    }
+
+    if (this->eat("->")) {
+      node->nd_func_return_type = this->expect_type();
+    }
+
+    node->nd_func_code = this->expect_scope();
+
+    return node;
+  }
+
+  //
   // if
   if (this->eat("if")) {
     auto node = new Node(ND_If, this->ate);
@@ -252,48 +284,12 @@ Node* Parser::assign()
 
 Node* Parser::expr() { return this->assign(); }
 
-Node* Parser::function()
-{
-  if (this->eat("fn")) {
-    auto node = new Node(ND_Function, this->ate);
-
-    node->nd_func_name = this->expect_ident();
-
-    this->expect("(");
-
-    if (!this->eat(")")) {
-      do {
-        auto& arg = node->list.emplace_back(new Node(ND_Argument));
-
-        arg->nd_arg_name = this->expect_ident();
-
-        this->expect(":");
-
-        arg->nd_arg_type = this->expect_type();
-
-      } while (this->eat(","));
-
-      this->expect(")");
-    }
-
-    if (this->eat("->")) {
-      node->nd_func_return_type = this->expect_type();
-    }
-
-    node->nd_func_code = this->expect_scope();
-
-    return node;
-  }
-
-  return this->expr();
-}
-
 Node* Parser::parse()
 {
   auto node = new Node(ND_Scope);
 
   while (this->check()) {
-    auto& item = node->list.emplace_back(this->function());
+    auto& item = node->list.emplace_back(this->expr());
 
     if (this->cur->prev->str == "}") {
       continue;

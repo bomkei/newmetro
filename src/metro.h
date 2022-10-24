@@ -217,6 +217,7 @@ enum TypeKind {
   TYPE_String,
   TYPE_Tuple,
   TYPE_Vector,
+  TYPE_Function
 };
 
 struct Type {
@@ -392,6 +393,27 @@ struct ObjVector : Object {
   }
 };
 
+struct Node;
+struct ObjFunction : Object {
+  Node* func;
+
+  ObjFunction(Node* func)
+      : Object(TYPE_Function),
+        func(func)
+  {
+  }
+
+  std::string to_string() const override
+  {
+    return Utils::format("<func 0x%X>", std::hash<Node*>()(func));
+  }
+
+  ObjFunction* clone() const override
+  {
+    return new ObjFunction(*this);
+  }
+};
+
 enum TokenKind {
   TOK_Immediate,
   TOK_Ident,
@@ -524,9 +546,8 @@ if:
 
 #define nd_callfunc_functor uni_nd[0]
 
-#define nd_func_name uni_token
-#define nd_func_return_type uni_nd[1]
-#define nd_func_code uni_nd[2]
+#define nd_func_return_type uni_nd[0]
+#define nd_func_code uni_nd[1]
 
 #define nd_if_cond uni_nd[0]
 #define nd_if_true uni_nd[1]
@@ -621,8 +642,6 @@ class Parser {
 
   Node* expr();
 
-  Node* function();
-
   Node* parse();
 
  private:
@@ -695,7 +714,6 @@ class Evaluator {
   Scope& get_cur_scope();
 
   Object*& get_var(Token* name);
-  Node* find_func(Token* name);
 
   std::list<Scope> scope_stack;
 };

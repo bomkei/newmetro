@@ -2,8 +2,8 @@
 #include "metro.h"
 
 static char const* typename_list[]{
-    "none", "int",    "float", "bool",
-    "char", "string", "tuple", "vector",
+    "none",   "int",   "float",  "bool",     "char",
+    "string", "tuple", "vector", "function",
 };
 
 std::string Type::to_string() const

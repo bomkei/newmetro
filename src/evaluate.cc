@@ -56,9 +56,12 @@ Object* Evaluator::eval(Node* node)
   switch (node->kind) {
     case ND_None:
     case ND_Struct:
-    case ND_Function:
     __none:
       return gcnew<ObjNone>();
+
+    case ND_Function: {
+      return gcnew<ObjFunction>(node);
+    }
 
     case ND_True:
       return gcnew<ObjBool>(true);
@@ -73,32 +76,29 @@ Object* Evaluator::eval(Node* node)
       return this->eval_lvalue(node)->clone();
     }
 
+    // call function
     case ND_Callfunc: {
-      auto functor = node->nd_callfunc_functor;
+      auto functor =
+          (ObjFunction*)this->eval(node->nd_callfunc_functor);
 
-      if (functor->kind == ND_Variable) {
-        auto func = this->find_func(functor->token);
-
-        // todo: check arguments
-
-        auto& func_scope = this->enter_scope(func);
-
-        for (auto act_arg_itr = node->list.begin();
-             auto&& arg : func->list) {
-          auto& var = func_scope.variables.emplace_back(
-              this->eval(*act_arg_itr++), arg->nd_arg_name->str);
-        }
-
-        auto result = this->eval(func->nd_func_code);
-
-        this->leave_scope();
-
-        return result;
+      // not a function
+      if (!functor->type.equals(TYPE_Function)) {
+        Error(ERR_TypeMismatch, node->token).emit().exit();
       }
 
-      TODO_IMPL
+      auto& scope = this->enter_scope(functor->func);
 
-      goto __none;
+      for (auto formal = functor->func->list.begin();
+           auto&& arg : node->list) {
+        auto& var = scope.variables.emplace_back(
+            this->eval(arg), (*formal++)->nd_arg_name->str);
+      }
+
+      auto result = this->eval(functor->func->nd_func_code);
+
+      this->leave_scope();
+
+      return result;
     }
 
     case ND_If: {
@@ -249,18 +249,4 @@ Object*& Evaluator::get_var(Token* name)
   }
 
   Error(ERR_UndefinedVariable, name).emit().exit();
-}
-
-Node* Evaluator::find_func(Token* name)
-{
-  for (auto&& scope : this->scope_stack) {
-    for (auto&& item : scope.node->list) {
-      if (item->kind == ND_Function &&
-          item->nd_func_name->str == name->str) {
-        return item;
-      }
-    }
-  }
-
-  Error(ERR_UndefinedFunction, name).emit().exit();
 }
