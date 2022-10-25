@@ -268,7 +268,12 @@ struct ObjNone : Object {
 
 template <class T, TypeKind kind>
 struct ObjImmediate : Object {
-  T value;
+  T value{};
+
+  ObjImmediate()
+      : Object(kind)
+  {
+  }
 
   ObjImmediate(T val)
       : Object(kind),
@@ -457,6 +462,7 @@ struct Token {
 
 enum NodeKind {
   ND_None,
+  ND_SelfFunc,
 
   ND_Type,
   ND_Argument,
@@ -598,6 +604,17 @@ struct Source {
   bool readfile(char const* path);
 };
 
+struct BuiltinFunc {
+  using FuncPointer = Object* (*)(std::vector<Object*> const&);
+
+  char const* name;
+  FuncPointer func;
+
+  BuiltinFunc(char const* name, FuncPointer func);
+
+  static std::vector<BuiltinFunc> const builtin_functions;
+};
+
 class Lexer {
  public:
   explicit Lexer(Source& source);
@@ -704,8 +721,14 @@ class Evaluator {
   Object* eval(Node* node);
   Object*& eval_lvalue(Node* node);
 
-  Object* mt_add(Object* lhs, Object* rhs);
-  Object* mt_sub(Object* lhs, Object* rhs);
+  /*
+    Object* mt_add(Object* lhs, Object* rhs);
+    Object* mt_sub(Object* lhs, Object* rhs);
+    Object* mt_mul(Object* lhs, Object* rhs);
+    Object* mt_div(Object* lhs, Object* rhs);
+    */
+
+  Object* compute_expr(Node* node, Object* lhs, Object* rhs);
 
  private:
   Scope& enter_scope(Node* node);
@@ -716,6 +739,7 @@ class Evaluator {
   Object*& get_var(Token* name);
 
   std::list<Scope> scope_stack;
+  std::list<Node*> call_stack;
 };
 
 class MegaGC {
@@ -740,14 +764,18 @@ enum ErrorKind {
   ERR_ExpectedIdentifier,
 
   ERR_TypeMismatch,
-  ERR_ExpectedLeftValue,
+  // ERR_ExpectedLeftValue,
 
   ERR_UndefinedVariable,
   ERR_UndefinedFunction,
 
   ERR_UninitializedVariable,
 
-  ERR_BracketNotClosed
+  ERR_BracketNotClosed,
+
+  ERR_HereIsNotInsideOfFunc,
+
+  ERR_InvalidOperator,
 };
 
 class Error {
@@ -795,3 +823,20 @@ class Error {
 
   bool is_warn;
 };
+
+template <std::derived_from<Object> T, class... Args>
+T* gcnew(Args&&... args)
+{
+  T* obj;
+
+  if constexpr (sizeof...(args) != 0) {
+    obj = new T(std::forward<Args...>(args...));
+  }
+  else {
+    obj = new T;
+  }
+
+  // todo: append
+
+  return obj;
+}

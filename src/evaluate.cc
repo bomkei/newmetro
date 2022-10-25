@@ -1,52 +1,5 @@
 #include "metro.h"
 
-template <std::derived_from<Object> T, class... Args>
-T* gcnew(Args&&... args)
-{
-  T* obj;
-
-  if constexpr (sizeof...(args) != 0) {
-    obj = new T(std::forward<Args...>(args...));
-  }
-  else {
-    obj = new T;
-  }
-
-  // todo: append
-
-  return obj;
-}
-
-Object* Evaluator::mt_add(Object* lhs, Object* rhs)
-{
-  // todo: str mul int
-
-  // todo: adjust type
-
-  if (lhs->type.equals(TYPE_Vector)) {
-    ((ObjVector*)lhs)->list.emplace_back(rhs);
-  }
-
-  switch (lhs->type.kind) {
-    case TYPE_Int:
-      ((ObjLong*)lhs)->value += ((ObjLong*)rhs)->value;
-      break;
-  }
-
-  return lhs;
-}
-
-Object* Evaluator::mt_sub(Object* lhs, Object* rhs)
-{
-  switch (lhs->type.kind) {
-    case TYPE_Int:
-      ((ObjLong*)lhs)->value -= ((ObjLong*)rhs)->value;
-      break;
-  }
-
-  return lhs;
-}
-
 Object* Evaluator::eval(Node* node)
 {
   if (!node) {
@@ -69,6 +22,14 @@ Object* Evaluator::eval(Node* node)
     case ND_False:
       return gcnew<ObjBool>(false);
 
+    case ND_SelfFunc: {
+      if (this->call_stack.empty()) {
+        Error(ERR_HereIsNotInsideOfFunc, node).emit().exit();
+      }
+
+      return gcnew<ObjFunction>(*this->call_stack.begin());
+    }
+
     case ND_Value:
       return node->nd_value->clone();
 
@@ -76,6 +37,7 @@ Object* Evaluator::eval(Node* node)
       return this->eval_lvalue(node)->clone();
     }
 
+    //
     // call function
     case ND_Callfunc: {
       auto functor =
@@ -86,8 +48,16 @@ Object* Evaluator::eval(Node* node)
         Error(ERR_TypeMismatch, node->token).emit().exit();
       }
 
+      //
+      // create a new scope for arguments
       auto& scope = this->enter_scope(functor->func);
 
+      auto callee = functor->func;
+
+      // append call stack
+      this->call_stack.emplace_front(callee);
+
+      // create arguments
       for (auto formal = functor->func->list.begin();
            auto&& arg : node->list) {
         auto& var = scope.variables.emplace_back(
@@ -97,6 +67,9 @@ Object* Evaluator::eval(Node* node)
       auto result = this->eval(functor->func->nd_func_code);
 
       this->leave_scope();
+
+      // remove call stack
+      this->call_stack.pop_front();
 
       return result;
     }
@@ -196,17 +169,7 @@ Object* Evaluator::eval(Node* node)
   auto lhs = this->eval(node->nd_lhs);
   auto rhs = this->eval(node->nd_rhs);
 
-  switch (node->kind) {
-    case ND_Add:
-      lhs = this->mt_add(lhs, rhs);
-      break;
-
-    case ND_Sub:
-      lhs = this->mt_sub(lhs, rhs);
-      break;
-  }
-
-  return lhs;
+  return this->compute_expr(node, lhs, rhs);
 }
 
 Object*& Evaluator::eval_lvalue(Node* node)
@@ -223,7 +186,7 @@ Object*& Evaluator::eval_lvalue(Node* node)
     }
   }
 
-  Error(ERR_ExpectedLeftValue, node).emit().exit();
+  Error(ERR_TypeMismatch, node).emit().exit();
 }
 
 Evaluator::Scope& Evaluator::enter_scope(Node* node)

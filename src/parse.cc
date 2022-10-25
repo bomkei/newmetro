@@ -8,6 +8,10 @@ Parser::Parser(Token* token)
 
 Node* Parser::atom()
 {
+  if (this->eat("@")) {
+    return new Node(ND_SelfFunc, this->ate);
+  }
+
   if (this->eat("true")) {
     return new Node(ND_True, this->ate);
   }
@@ -75,6 +79,7 @@ Node* Parser::factor()
     }
 
     this->expect(")");
+
     return x;
   }
 
@@ -116,9 +121,9 @@ Node* Parser::statement()
 
         arg->nd_arg_name = this->expect_ident();
 
-        this->expect(":");
-
-        arg->nd_arg_type = this->expect_type();
+        if (this->eat(":")) {
+          arg->nd_arg_type = this->expect_type();
+        }
 
       } while (this->eat(","));
 

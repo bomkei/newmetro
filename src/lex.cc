@@ -1,23 +1,48 @@
 #include "metro.h"
 
 static char const punctuators[] =
-    "(){}[]<>"
-    "=+-*/%"
-    "|^&"
+    "(){}[]<>"  // 括弧
+    "=+-*/%"    // 代入、基本演算
+    "|^&"       // ビット演算
+    "@"         // 関数再帰 (自分自身の呼び出し)
     ".,;:"
     "!?";
 
 static char const* long_punctuators[]{
-    "<=>", "<<=", ">>=", "->", "+=", "-=", "*=", "/=",
-    "%=",  ">>",  "<<",  ">=", "<=", "==", "!=",
+    // 三方比較演算子
+    "<=>",
+
+    // シフト代入
+    "<<=",
+    ">>=",
+
+    // 関数の戻り値の型を指定
+    "->",
+
+    // 演算代入
+    "+=",
+    "-=",
+    "*=",
+    "/=",
+    "%=",
+
+    // シフト
+    ">>",
+    "<<",
+
+    // 比較
+    ">=",
+    "<=",
+    "==",
+    "!=",
 };
 
 static std::string_view const keywords[]{
-    // value
+    // 即値
     "true",
     "false",
 
-    // type names
+    // 型名
     "none",
     "int",
     "float",
@@ -25,9 +50,10 @@ static std::string_view const keywords[]{
     "char",
     "string",
     "tuple",
-    "vector",
+    "vec",
+    "func",
 
-    // control
+    // 制御構文
     "if",
     "else",
     "for",
@@ -40,17 +66,17 @@ static std::string_view const keywords[]{
     "continue",
     "return",
 
-    // variable definition
+    // 変数定義
     "let",
 
-    // function
+    // 関数
     "fn",
-    "self",
+    // "self",
 
-    // class
+    // クラス
     "class",
 
-    // namespace
+    // 名前空間
     "namespace",
 };
 
