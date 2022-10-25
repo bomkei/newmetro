@@ -205,15 +205,51 @@ Node* Parser::callfunc()
   return x;
 }
 
-Node* Parser::mul()
+Node* Parser::subscript()
 {
   auto x = this->callfunc();
 
+  while (this->eat("[")) {
+    x = new Node(ND_Subscript, this->ate, x, this->expr());
+
+    this->expect("]");
+  }
+
+  return x;
+}
+
+Node* Parser::member_access()
+{
+  auto x = this->subscript();
+
+  while (this->eat(".")) {
+    if (this->cur->kind != TOK_Ident) {
+      Error(ERR_InvalidSyntax, this->cur).emit().exit();
+    }
+
+    auto y = this->subscript();
+
+    if (y->kind == ND_Callfunc) {
+      y->list.insert(y->list.begin(), x);
+      x = y;
+    }
+    else {
+      x = new Node(ND_MemberAccess, this->ate, x, this->subscript());
+    }
+  }
+
+  return x;
+}
+
+Node* Parser::mul()
+{
+  auto x = this->member_access();
+
   while (this->check()) {
     if (this->eat("*"))
-      x = new Node(ND_Mul, this->ate, x, this->callfunc());
+      x = new Node(ND_Mul, this->ate, x, this->member_access());
     else if (this->eat("/"))
-      x = new Node(ND_Div, this->ate, x, this->callfunc());
+      x = new Node(ND_Div, this->ate, x, this->member_access());
     else
       break;
   }

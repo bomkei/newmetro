@@ -12,15 +12,31 @@ Object* Evaluator::eval(Node* node)
     __none:
       return gcnew<ObjNone>();
 
-    case ND_Function: {
-      return gcnew<ObjFunction>(node);
-    }
+    case ND_Value:
+      return node->nd_value->clone();
 
     case ND_True:
       return gcnew<ObjBool>(true);
 
     case ND_False:
       return gcnew<ObjBool>(false);
+
+    case ND_EmptyList:
+      return gcnew<ObjVector>();
+
+    case ND_List: {
+      auto ret = gcnew<ObjVector>();
+
+      for (auto&& x : node->list) {
+        ret->list.emplace_back(this->eval(x));
+      }
+
+      return ret;
+    }
+
+    case ND_Function: {
+      return gcnew<ObjFunction>(node);
+    }
 
     case ND_SelfFunc: {
       if (this->call_stack.empty()) {
@@ -30,9 +46,6 @@ Object* Evaluator::eval(Node* node)
       return gcnew<ObjFunction>(*this->call_stack.begin());
     }
 
-    case ND_Value:
-      return node->nd_value->clone();
-
     case ND_Variable: {
       return this->eval_lvalue(node)->clone();
     }
@@ -40,6 +53,21 @@ Object* Evaluator::eval(Node* node)
     //
     // call function
     case ND_Callfunc: {
+      // check builtin
+      if (node->nd_lhs->kind == ND_Variable) {
+        for (auto&& bfun : BuiltinFunc::builtin_functions) {
+          if (bfun.name == node->nd_lhs->token->str) {
+            std::vector<Object*> args;
+
+            for (auto&& x : node->list) {
+              args.emplace_back(this->eval(x));
+            }
+
+            return bfun.func(node, args);
+          }
+        }
+      }
+
       auto functor =
           (ObjFunction*)this->eval(node->nd_callfunc_functor);
 

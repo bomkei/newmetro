@@ -1,7 +1,7 @@
 #include "metro.h"
 
-#define definition(e) \
-  [](std::vector<Object*> const& args) -> Object* { e }
+#define blambda(e) \
+  [](Node * node, std::vector<Object*> const& args) -> Object* e
 
 BuiltinFunc::BuiltinFunc(char const* name, FuncPointer func)
     : name(name),
@@ -9,7 +9,7 @@ BuiltinFunc::BuiltinFunc(char const* name, FuncPointer func)
 {
 }
 
-static auto const bfun_print = definition({
+static auto const bfun_print = blambda({
   auto ret = new ObjLong;
 
   for (auto&& arg : args) {
@@ -28,8 +28,8 @@ std::vector<BuiltinFunc> const BuiltinFunc::builtin_functions = {
     {"print", bfun_print},
 
     // println
-    {"println", definition({
-       auto ret = bfun_print(args);
+    {"println", blambda({
+       auto ret = bfun_print(node, args);
 
        std::cout << std::endl;
 
@@ -38,4 +38,14 @@ std::vector<BuiltinFunc> const BuiltinFunc::builtin_functions = {
      })},
 
     // append
+    {"append", blambda({
+       if (args.size() < 2 || !args[0]->type.equals(TYPE_Vector)) {
+         Error(ERR_IllegalFunctionCall, node).emit().exit();
+       }
+
+       for (auto it = args.begin() + 1; it != args.end(); it++)
+         ((ObjVector*)args[0])->list.emplace_back(*it);
+
+       return args[0];
+     })},
 };

@@ -16,7 +16,5 @@ int main(int argc, char** argv)
 
   auto obj = eval.eval(node);
 
-  std::cout << obj->to_string() << std::endl;
-
   return 0;
 }

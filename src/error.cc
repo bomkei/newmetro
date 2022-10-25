@@ -11,6 +11,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_UninitializedVariable, "variable is not uninitialized"},
     {ERR_BracketNotClosed, "bracket not closed"},
     {ERR_InvalidOperator, "invalid operator"},
+    {ERR_IllegalFunctionCall, "illegal function call"},
 };
 
 static char const* get_err_msg(ErrorKind kind)

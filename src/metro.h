@@ -399,18 +399,26 @@ struct ObjVector : Object {
 };
 
 struct Node;
+struct BuiltinFunc;
 struct ObjFunction : Object {
+  bool is_builtin;
   Node* func;
+  BuiltinFunc const* builtin;
 
   ObjFunction(Node* func)
       : Object(TYPE_Function),
-        func(func)
+        is_builtin(false),
+        func(func),
+        builtin(nullptr)
   {
   }
 
   std::string to_string() const override
   {
-    return Utils::format("<func 0x%X>", std::hash<Node*>()(func));
+    return Utils::format(
+        "<func 0x%X>",
+        std::hash<void*>()(this->is_builtin ? (void*)this->builtin
+                                            : this->func));
   }
 
   ObjFunction* clone() const override
@@ -479,6 +487,9 @@ enum NodeKind {
 
   ND_Variable,
   ND_Callfunc,
+
+  ND_Subscript,
+  ND_MemberAccess,
 
   ND_Add,
   ND_Sub,
@@ -605,7 +616,8 @@ struct Source {
 };
 
 struct BuiltinFunc {
-  using FuncPointer = Object* (*)(std::vector<Object*> const&);
+  using FuncPointer = Object* (*)(Node* node,
+                                  std::vector<Object*> const&);
 
   char const* name;
   FuncPointer func;
@@ -650,6 +662,9 @@ class Parser {
 
   Node* statement();
   Node* callfunc();
+
+  Node* subscript();
+  Node* member_access();
 
   Node* mul();
   Node* add();
@@ -776,6 +791,8 @@ enum ErrorKind {
   ERR_HereIsNotInsideOfFunc,
 
   ERR_InvalidOperator,
+
+  ERR_IllegalFunctionCall,
 };
 
 class Error {
