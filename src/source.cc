@@ -18,5 +18,7 @@ bool Source::readfile(char const* path)
     this->text += line + '\n';
   }
 
+  this->path = path;
+
   return true;
 }

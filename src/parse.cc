@@ -33,6 +33,12 @@ Node* Parser::atom()
 
           break;
 
+        case TYPE_String:
+          node->nd_value = new ObjString(
+              Utils::Converter::to_wide(std::string(this->cur->str)));
+
+          break;
+
         default:
           TODO_IMPL
       }
@@ -154,27 +160,6 @@ Node* Parser::statement()
       else
         node->nd_if_false = this->expect_scope();
     }
-
-    return node;
-  }
-
-  //
-  // let - 変数定義
-  if (this->eat("let")) {
-    auto node = new Node(ND_Let, this->ate);
-
-    // 変数名
-    node->nd_let_name = this->expect_ident();
-
-    if (this->eat(":")) {  // 型指定
-      node->nd_let_type = this->expect_type();
-    }
-
-    if (this->eat("=")) {  // 初期化式
-      node->nd_let_init = this->expr();
-    }
-
-    this->expect(";");
 
     return node;
   }
@@ -323,7 +308,31 @@ Node* Parser::assign()
   return x;
 }
 
-Node* Parser::expr() { return this->assign(); }
+Node* Parser::expr()
+{
+  //
+  // let - 変数定義
+  if (this->eat("let")) {
+    auto node = new Node(ND_Let, this->ate);
+
+    // 変数名
+    node->nd_let_name = this->expect_ident();
+
+    if (this->eat(":")) {  // 型指定
+      node->nd_let_type = this->expect_type();
+    }
+
+    if (this->eat("=")) {  // 初期化式
+      node->nd_let_init = this->expr();
+    }
+
+    this->expect(";");
+
+    return node;
+  }
+
+  return this->assign();
+}
 
 Node* Parser::parse()
 {

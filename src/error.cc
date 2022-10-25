@@ -72,6 +72,28 @@ Error::ErrLocation::ErrLocation(Node* node)
       end(0),
       node(node)
 {
+  auto [x, y] = get_token_range(node);
+
+  this->begin = x->pos;
+  this->end = y->endpos;
+}
+
+std::string Error::ErrLocation::trim_source() const
+{
+  auto tbegin = this->begin;
+  auto tend = this->end;
+
+  auto const& source = Driver::get_current_source();
+
+  while (tbegin > 0 && source.text[tbegin] != '\n') {
+    tbegin--;
+  }
+
+  while (tend < source.text.length() && source.text[tend] != '\n') {
+    tend++;
+  }
+
+  return source.text.substr(tbegin, tend - tbegin);
 }
 
 Error::Error(ErrorKind kind, Error::ErrLocation loc)
@@ -98,8 +120,8 @@ Error& Error::emit()
 {
   auto msg = get_err_msg(this->kind);
 
-  std::cout << "error: " << this->loc.token->linenum << " " << msg
-            << std::endl;
+  std::cout << this->loc.trim_source() << std::endl
+            << "error: " << msg << std::endl;
 
   return *this;
 }

@@ -113,6 +113,19 @@ Token* Lexer::lex()
       len = this->pass_while(isalnum);
     }
 
+    // char / string
+    else if (ch == '"' || ch == '\'') {
+      cur->kind = TOK_Immediate;
+      cur->imm_kind = ch == '"' ? TYPE_String : TYPE_Char;
+
+      this->position++;
+      str++;
+
+      len = this->pass_while([&](char c) { return c != ch; });
+
+      this->position++;
+    }
+
     // identifier
     else if (isalpha(ch) || ch == '_') {
       cur->kind = TOK_Ident;

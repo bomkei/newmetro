@@ -200,7 +200,7 @@ class Converter {
   }
 
   // utf8 --> wide
-  static std::wstring to_utf32(std::string const& s)
+  static std::wstring to_wide(std::string const& s)
   {
     return conv.from_bytes(s);
   }
@@ -607,6 +607,7 @@ struct Node {
 };
 
 struct Source {
+  std::string path;
   std::string text;
 
   Source();
@@ -616,8 +617,7 @@ struct Source {
 };
 
 struct BuiltinFunc {
-  using FuncPointer = Object* (*)(Node* node,
-                                  std::vector<Object*> const&);
+  using FuncPointer = Object* (*)(Node*, std::vector<Object*> const&);
 
   char const* name;
   FuncPointer func;
@@ -771,6 +771,21 @@ class MegaGC {
   MegaGC();
 };
 
+class Driver {
+ public:
+  Driver();
+
+  Object* execute_script();
+
+  int main(int argc, char** argv);
+
+  static Source const& get_current_source();
+
+ private:
+  Source source;
+  std::vector<std::wstring> argv;
+};
+
 enum ErrorKind {
   ERR_InvalidToken,
 
@@ -817,6 +832,8 @@ class Error {
     ErrLocation(size_t);
     ErrLocation(Token*);
     ErrLocation(Node*);
+
+    std::string trim_source() const;
 
    private:
     ErrLocation() {}
