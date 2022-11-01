@@ -1,5 +1,7 @@
 #include "metro.h"
 
+#define COL_ERROR "\033[37;1;4m"
+
 static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_InvalidToken, "invalid token"},
     {ERR_InvalidSyntax, "invalid syntax"},
@@ -11,6 +13,8 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_UninitializedVariable, "variable is not uninitialized"},
     {ERR_BracketNotClosed, "bracket not closed"},
     {ERR_InvalidOperator, "invalid operator"},
+    {ERR_MultiplyStringByNegative,
+     "multiply string by negative value"},
     {ERR_IllegalFunctionCall, "illegal function call"},
 };
 
@@ -27,6 +31,7 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
 {
   switch (node->kind) {
     case ND_None:
+    case ND_SelfFunc:
     case ND_Type:
     case ND_Argument:
     case ND_True:
@@ -34,6 +39,19 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
     case ND_Value:
     case ND_Variable:
       break;
+
+    case ND_Callfunc: {
+      auto [x, y] = get_token_range(node->nd_callfunc_functor);
+
+      if (node->list.empty()) {
+        y = y->next->next;
+      }
+      else {
+        y = get_token_range(*node->list.rbegin()).second;
+      }
+
+      return {x, y};
+    }
 
     case ND_List:
     case ND_Tuple: {
@@ -45,9 +63,18 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
               get_token_range(*node->list.rbegin()).second};
     }
 
+    case ND_If:
+    case ND_For:
+    case ND_While:
+    case ND_Let:
+    case ND_Scope:
+    case ND_Function:
+    case ND_Struct:
+      TODO_IMPL;
+
     default:
-      alertfmt("%d", node->kind);
-      TODO_IMPL
+      return {get_token_range(node->nd_lhs).first,
+              get_token_range(node->nd_rhs).second};
   }
 
   return {node->token, node->token};
@@ -56,13 +83,22 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
 Error::ErrLocation::ErrLocation(size_t pos)
     : begin(0),
       end(0),
+      linenum(1),
       pos(pos)
 {
+  auto const& source = Driver::get_current_source();
+
+  for (size_t i = 0; i < pos; i++) {
+    if (source.text[i] == '\n') {
+      this->linenum++;
+    }
+  }
 }
 
 Error::ErrLocation::ErrLocation(Token* token)
     : begin(token->pos),
       end(token->endpos),
+      linenum(token->linenum),
       token(token)
 {
 }
@@ -70,22 +106,34 @@ Error::ErrLocation::ErrLocation(Token* token)
 Error::ErrLocation::ErrLocation(Node* node)
     : begin(0),
       end(0),
+      linenum(0),
       node(node)
 {
+  alert;
+  alertfmt("%d", node->kind);
+
   auto [x, y] = get_token_range(node);
 
-  this->begin = x->pos;
-  this->end = y->endpos;
+  if (y->pos >= x->pos) {
+    this->linenum = x->linenum;
+    this->begin = x->pos;
+    this->end = y->endpos;
+  }
+  else {
+    this->linenum = y->linenum;
+    this->begin = y->pos;
+    this->end = x->endpos;
+  }
 }
 
-std::string Error::ErrLocation::trim_source() const
+std::vector<std::string> Error::ErrLocation::trim_source()
 {
   auto tbegin = this->begin;
   auto tend = this->end;
 
   auto const& source = Driver::get_current_source();
 
-  while (tbegin > 0 && source.text[tbegin] != '\n') {
+  while (tbegin > 0 && source.text[tbegin - 1] != '\n') {
     tbegin--;
   }
 
@@ -93,7 +141,35 @@ std::string Error::ErrLocation::trim_source() const
     tend++;
   }
 
-  return source.text.substr(tbegin, tend - tbegin);
+  auto ret = source.text.substr(tbegin, tend - tbegin);
+
+  ret.insert(this->end - tbegin, COL_DEFAULT);
+  ret.insert(this->begin - tbegin, COL_ERROR);
+
+  std::vector<std::string> vec;
+  std::string line;
+
+  for (size_t i = tbegin; auto&& c : ret) {
+    if (c == '\n') {
+      vec.emplace_back(line + COL_DEFAULT);
+
+      if (this->begin <= i && i < this->end) {
+        line = COL_ERROR;
+      }
+      else {
+        line.clear();
+      }
+
+      continue;
+    }
+
+    line.push_back(c);
+    i++;
+  }
+
+  vec.emplace_back(line);
+
+  return vec;
 }
 
 Error::Error(ErrorKind kind, Error::ErrLocation loc)
@@ -120,8 +196,14 @@ Error& Error::emit()
 {
   auto msg = get_err_msg(this->kind);
 
-  std::cout << this->loc.trim_source() << std::endl
-            << "error: " << msg << std::endl;
+  auto const trimmed = this->loc.trim_source();
+
+  for (auto linenum = this->loc.linenum; auto&& line : trimmed) {
+    std::cout << Utils::format("%6d | ", linenum) << line
+              << std::endl;
+
+    linenum++;
+  }
 
   return *this;
 }

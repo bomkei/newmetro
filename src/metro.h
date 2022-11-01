@@ -236,7 +236,6 @@ struct Type {
 
   std::string to_string() const;
 
-  bool equals(TypeKind kind) const;
   bool equals(Type const& type) const;
 };
 
@@ -331,7 +330,14 @@ struct ObjFloat : Object {
 
   std::string to_string() const override
   {
-    return std::to_string(this->value);
+    auto s = std::to_string(this->value);
+
+    while (s.length() >= 2 && *(s.rbegin() + 1) != '.' &&
+           *s.rbegin() == '0') {
+      s.pop_back();
+    }
+
+    return s;
   }
 
   ObjFloat* clone() const override
@@ -495,13 +501,22 @@ enum NodeKind {
   ND_Sub,
   ND_Mul,
   ND_Div,
+  ND_Mod,
+
+  ND_LShift,
+  ND_RShift,
 
   ND_Bigger,         // >
   ND_BiggerOrEqual,  // >=
   ND_Equal,
   ND_NotEqual,
 
-  ND_Compare,
+  ND_BitAnd,
+  ND_BitXor,
+  ND_BitOr,
+
+  ND_LogAnd,
+  ND_LogOr,
 
   ND_Assign,
 
@@ -668,8 +683,19 @@ class Parser {
 
   Node* mul();
   Node* add();
+
+  Node* shift();
+
   Node* compare();
   Node* equality();
+
+  Node* bit_and();
+  Node* bit_xor();
+  Node* bit_or();
+
+  Node* log_and();
+  Node* log_or();
+
   Node* assign();
 
   Node* expr();
@@ -736,12 +762,7 @@ class Evaluator {
   Object* eval(Node* node);
   Object*& eval_lvalue(Node* node);
 
-  /*
-    Object* mt_add(Object* lhs, Object* rhs);
-    Object* mt_sub(Object* lhs, Object* rhs);
-    Object* mt_mul(Object* lhs, Object* rhs);
-    Object* mt_div(Object* lhs, Object* rhs);
-    */
+  void adjust_object_type(Object*& lhs, Object*& rhs);
 
   Object* compute_expr(Node* node, Object* lhs, Object* rhs);
 
@@ -794,7 +815,6 @@ enum ErrorKind {
   ERR_ExpectedIdentifier,
 
   ERR_TypeMismatch,
-  // ERR_ExpectedLeftValue,
 
   ERR_UndefinedVariable,
   ERR_UndefinedFunction,
@@ -806,6 +826,7 @@ enum ErrorKind {
   ERR_HereIsNotInsideOfFunc,
 
   ERR_InvalidOperator,
+  ERR_MultiplyStringByNegative,
 
   ERR_IllegalFunctionCall,
 };
@@ -822,6 +843,7 @@ class Error {
 
     size_t begin;
     size_t end;
+    size_t linenum;
 
     union {
       size_t pos;
@@ -833,7 +855,7 @@ class Error {
     ErrLocation(Token*);
     ErrLocation(Node*);
 
-    std::string trim_source() const;
+    std::vector<std::string> trim_source();
 
    private:
     ErrLocation() {}

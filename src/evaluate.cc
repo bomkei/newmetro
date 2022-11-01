@@ -53,7 +53,7 @@ Object* Evaluator::eval(Node* node)
     //
     // call function
     case ND_Callfunc: {
-      // check builtin
+      // find builtin
       if (node->nd_lhs->kind == ND_Variable) {
         for (auto&& bfun : BuiltinFunc::builtin_functions) {
           if (bfun.name == node->nd_lhs->token->str) {
@@ -80,6 +80,7 @@ Object* Evaluator::eval(Node* node)
       // create a new scope for arguments
       auto& scope = this->enter_scope(functor->func);
 
+      // callee
       auto callee = functor->func;
 
       // append call stack
@@ -164,25 +165,70 @@ Object* Evaluator::eval(Node* node)
       for (auto&& item : items) {
         auto rhs = this->eval(item->nd_rhs);
 
+        this->adjust_object_type(lhs, rhs);
+
+        if (!lhs->type.equals(rhs->type)) {
+          Error(ERR_TypeMismatch, node).emit().exit();
+        }
+
+        auto result = false;
+
         switch (item->kind) {
           case ND_Bigger:
             switch (lhs->type.kind) {
               case TYPE_Int:
-                if (((ObjLong*)lhs)->value <= ((ObjLong*)rhs)->value)
-                  goto _fail;
+                result =
+                    ((ObjLong*)lhs)->value > ((ObjLong*)rhs)->value;
+                break;
 
+              case TYPE_Float:
+                result =
+                    ((ObjFloat*)lhs)->value > ((ObjFloat*)rhs)->value;
                 break;
             }
             break;
+
+          case ND_BiggerOrEqual:
+            switch (lhs->type.kind) {
+              case TYPE_Int:
+                result =
+                    ((ObjLong*)lhs)->value >= ((ObjLong*)rhs)->value;
+                break;
+
+              case TYPE_Float:
+                result = ((ObjFloat*)lhs)->value >=
+                         ((ObjFloat*)rhs)->value;
+                break;
+            }
+            break;
+
+          case ND_Equal:
+          case ND_NotEqual:
+            switch (lhs->type.kind) {
+              case TYPE_Int:
+                result =
+                    ((ObjLong*)lhs)->value == ((ObjLong*)rhs)->value;
+                break;
+
+              case TYPE_Float:
+                result = ((ObjFloat*)lhs)->value ==
+                         ((ObjFloat*)rhs)->value;
+                break;
+            }
+
+            if (item->kind == ND_NotEqual) result ^= 1;
+
+            break;
+        }
+
+        if (!result) {
+          return gcnew<ObjBool>(false);
         }
 
         lhs = rhs;
       }
 
       return gcnew<ObjBool>(true);
-
-    _fail:
-      return gcnew<ObjBool>(false);
     }
 
     case ND_Assign: {

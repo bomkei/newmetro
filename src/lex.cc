@@ -19,12 +19,15 @@ static char const* long_punctuators[]{
     // 関数の戻り値の型を指定
     "->",
 
-    // 演算代入
+    // 複合代入
     "+=",
     "-=",
     "*=",
     "/=",
     "%=",
+    "&=",
+    "^=",
+    "|=",
 
     // シフト
     ">>",
@@ -35,6 +38,10 @@ static char const* long_punctuators[]{
     "<=",
     "==",
     "!=",
+
+    //
+    "&&",
+    "||",
 };
 
 static std::string_view const keywords[]{
@@ -110,7 +117,20 @@ Token* Lexer::lex()
     if (isdigit(ch)) {
       cur->kind = TOK_Immediate;
       cur->imm_kind = TYPE_Int;
+
       len = this->pass_while(isalnum);
+
+      if (this->peek() == '.') {
+        this->position++;
+
+        if (!isdigit(this->peek())) {
+          this->position--;
+        }
+        else {
+          cur->imm_kind = TYPE_Float;
+          len += this->pass_while(isalnum) + 1;
+        }
+      }
     }
 
     // char / string
@@ -162,7 +182,7 @@ Token* Lexer::lex()
     }
 
     cur->str = {str, len};
-    cur->endpos = this->position - pos;
+    cur->endpos = this->position;
 
     if (cur->kind == TOK_Ident &&
         std::find(std::begin(keywords), std::end(keywords),
@@ -170,7 +190,7 @@ Token* Lexer::lex()
       cur->kind = TOK_Keyword;
     }
 
-    while (line_itr->second <= this->position) {
+    while (line_itr->second < this->position) {
       line_itr++;
     }
 

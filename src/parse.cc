@@ -33,6 +33,12 @@ Node* Parser::atom()
 
           break;
 
+        case TYPE_Float:
+          node->nd_value =
+              new ObjFloat(std::stof(this->cur->str.data()));
+
+          break;
+
         case TYPE_String:
           node->nd_value = new ObjString(
               Utils::Converter::to_wide(std::string(this->cur->str)));
@@ -235,6 +241,8 @@ Node* Parser::mul()
       x = new Node(ND_Mul, this->ate, x, this->member_access());
     else if (this->eat("/"))
       x = new Node(ND_Div, this->ate, x, this->member_access());
+    else if (this->eat("%"))
+      x = new Node(ND_Mod, this->ate, x, this->member_access());
     else
       break;
   }
@@ -258,19 +266,35 @@ Node* Parser::add()
   return x;
 }
 
-Node* Parser::compare()
+Node* Parser::shift()
 {
   auto x = this->add();
 
   while (this->check()) {
+    if (this->eat("<<"))
+      x = new Node(ND_LShift, this->ate, x, this->add());
+    else if (this->eat(">>"))
+      x = new Node(ND_RShift, this->ate, x, this->add());
+    else
+      break;
+  }
+
+  return x;
+}
+
+Node* Parser::compare()
+{
+  auto x = this->shift();
+
+  while (this->check()) {
     if (this->eat(">"))
-      x = new Node(ND_Bigger, this->ate, x, this->add());
+      x = new Node(ND_Bigger, this->ate, x, this->shift());
     else if (this->eat("<"))
-      x = new Node(ND_Bigger, this->ate, this->add(), x);
+      x = new Node(ND_Bigger, this->ate, this->shift(), x);
     else if (this->eat(">="))
-      x = new Node(ND_BiggerOrEqual, this->ate, x, this->add());
+      x = new Node(ND_BiggerOrEqual, this->ate, x, this->shift());
     else if (this->eat("<="))
-      x = new Node(ND_BiggerOrEqual, this->ate, this->add(), x);
+      x = new Node(ND_BiggerOrEqual, this->ate, this->shift(), x);
     else
       break;
   }
@@ -294,9 +318,59 @@ Node* Parser::equality()
   return x;
 }
 
-Node* Parser::assign()
+Node* Parser::bit_and()
 {
   auto x = this->equality();
+
+  while (this->eat("&"))
+    x = new Node(ND_BitAnd, this->ate, x, this->equality());
+
+  return x;
+}
+
+Node* Parser::bit_xor()
+{
+  auto x = this->bit_and();
+
+  while (this->eat("^"))
+    x = new Node(ND_BitXor, this->ate, x, this->bit_and());
+
+  return x;
+}
+
+Node* Parser::bit_or()
+{
+  auto x = this->bit_xor();
+
+  while (this->eat("|"))
+    x = new Node(ND_BitOr, this->ate, x, this->bit_xor());
+
+  return x;
+}
+
+Node* Parser::log_and()
+{
+  auto x = this->bit_or();
+
+  while (this->eat("&&"))
+    x = new Node(ND_LogAnd, this->ate, x, this->bit_or());
+
+  return x;
+}
+
+Node* Parser::log_or()
+{
+  auto x = this->log_and();
+
+  while (this->eat("||"))
+    x = new Node(ND_LogAnd, this->ate, x, this->log_and());
+
+  return x;
+}
+
+Node* Parser::assign()
+{
+  auto x = this->log_or();
 
   if (this->eat("="))
     x = new Node(ND_Assign, this->ate, x, this->assign());
@@ -304,6 +378,18 @@ Node* Parser::assign()
   if (this->eat("+="))
     x = new Node(ND_Assign, this->ate, x,
                  new Node(ND_Add, this->ate, x, this->assign()));
+
+  if (this->eat("-="))
+    x = new Node(ND_Assign, this->ate, x,
+                 new Node(ND_Sub, this->ate, x, this->assign()));
+
+  if (this->eat("*="))
+    x = new Node(ND_Assign, this->ate, x,
+                 new Node(ND_Mul, this->ate, x, this->assign()));
+
+  if (this->eat("/="))
+    x = new Node(ND_Assign, this->ate, x,
+                 new Node(ND_Div, this->ate, x, this->assign()));
 
   return x;
 }

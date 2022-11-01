@@ -13,11 +13,9 @@ std::string Type::to_string() const
   return typename_list[static_cast<int>(this->kind)];
 }
 
-bool Type::equals(TypeKind kind) const { return this->kind == kind; }
-
 bool Type::equals(Type const& type) const
 {
-  if (this->kind == kind) {
+  if (this->kind == type.kind) {
     return true;
   }
 
