@@ -307,6 +307,10 @@ struct ObjString : Object {
   {
   }
 
+  void append(wchar_t ch) { this->value.push_back(ch); }
+
+  void append(std::wstring const& s) { this->value.append(s); }
+
   std::string to_string() const override
   {
     return Utils::Converter::to_utf8(this->value);
@@ -828,6 +832,8 @@ enum ErrorKind {
   ERR_MultiplyStringByNegative,
 
   ERR_IllegalFunctionCall,
+  ERR_TooFewArguments,
+  ERR_TooManyArguments,
 };
 
 class Error {

@@ -17,6 +17,8 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_MultiplyStringByNegative,
      "multiply string by negative value"},
     {ERR_IllegalFunctionCall, "illegal function call"},
+    {ERR_TooFewArguments, "too few arguments"},
+    {ERR_TooManyArguments, "too many arguments"},
 };
 
 static char const* get_err_msg(ErrorKind kind)
@@ -45,13 +47,22 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
       auto [x, y] = get_token_range(node->nd_callfunc_functor);
 
       if (node->list.empty()) {
-        y = y->next->next;
-      }
-      else {
-        y = get_token_range(*node->list.rbegin()).second;
+        return {x, y->next->next};
       }
 
-      return {x, y};
+      auto last = get_token_range(*node->list.rbegin());
+
+      if (auto first = get_token_range(node->list[0]);
+          first.second->endpos < x->pos) {
+        if (node->list.size() == 1) {
+          return {first.first, y->next->next};
+        }
+
+        return {first.first,
+                get_token_range(*node->list.rbegin()).second->next};
+      }
+
+      return {x, last.second->next};
     }
 
     case ND_List:

@@ -4,8 +4,7 @@
 
 void Evaluator::adjust_object_type(Object*& lhs, Object*& rhs)
 {
-  if (static_cast<int>(lhs->type.kind) >
-      static_cast<int>(rhs->type.kind)) {
+  if (lhs->type.kind > rhs->type.kind) {
     std::swap(lhs, rhs);
   }
 
@@ -61,8 +60,7 @@ Object* Evaluator::compute_expr(Node* node, Object* lhs, Object* rhs)
   auto typekind = lhs->type.kind;
 
   if (lhs->type.equals(rhs->type)) {
-    goto*
-        jump_table[static_cast<int>(node->kind) - nd_kind_expr_begin];
+    goto* jump_table[node->kind - nd_kind_expr_begin];
   }
 
   for (auto&& [left, right, label] : jump_table_special) {
