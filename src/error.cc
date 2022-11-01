@@ -12,6 +12,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_UndefinedFunction, "undefined function name"},
     {ERR_UninitializedVariable, "variable is not uninitialized"},
     {ERR_BracketNotClosed, "bracket not closed"},
+    {ERR_HereIsNotInsideOfFunc, "here is not inside of function"},
     {ERR_InvalidOperator, "invalid operator"},
     {ERR_MultiplyStringByNegative,
      "multiply string by negative value"},
@@ -109,9 +110,6 @@ Error::ErrLocation::ErrLocation(Node* node)
       linenum(0),
       node(node)
 {
-  alert;
-  alertfmt("%d", node->kind);
-
   auto [x, y] = get_token_range(node);
 
   if (y->pos >= x->pos) {
@@ -196,7 +194,17 @@ Error& Error::emit()
 {
   auto msg = get_err_msg(this->kind);
 
+  auto const& source = Driver::get_current_source();
   auto const trimmed = this->loc.trim_source();
+
+  if (this->is_warn)
+    std::cout << COL_YELLOW << "warning: " << msg << std::endl;
+  else
+    std::cout << COL_RED << "error: " << msg << std::endl;
+
+  std::cout << COL_CYAN << " --> " << source.path << ":"
+            << this->loc.linenum << std::endl
+            << COL_DEFAULT << "       |" << std::endl;
 
   for (auto linenum = this->loc.linenum; auto&& line : trimmed) {
     std::cout << Utils::format("%6d | ", linenum) << line
@@ -204,6 +212,8 @@ Error& Error::emit()
 
     linenum++;
   }
+
+  std::cout << "       |\n\n";
 
   return *this;
 }

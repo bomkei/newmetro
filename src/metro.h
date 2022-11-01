@@ -291,13 +291,12 @@ struct ObjImmediate : Object {
   }
 };
 
-template <>
-std::string ObjImmediate<bool, TYPE_Bool>::to_string() const;
-
 using ObjLong = ObjImmediate<int64_t, TYPE_Int>;
 using ObjChar = ObjImmediate<wchar_t, TYPE_Char>;
-
 using ObjBool = ObjImmediate<bool, TYPE_Bool>;
+
+template <>
+std::string ObjImmediate<bool, TYPE_Bool>::to_string() const;
 
 struct ObjString : Object {
   std::wstring value;
