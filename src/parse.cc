@@ -39,11 +39,35 @@ Node* Parser::atom()
 
           break;
 
-        case TYPE_String:
-          node->nd_value = new ObjString(
-              Utils::Converter::to_wide(std::string(this->cur->str)));
+        case TYPE_String: {
+          auto s =
+              Utils::Converter::to_wide(std::string(this->cur->str));
 
+          for (auto c = s.begin(); c != s.end(); c++) {
+            if (*c == L'\\') {
+              s.erase(c);
+
+              switch (*c) {
+                case L'\\':
+                  break;
+
+                case L'n':
+                  *c = L'\n';
+                  break;
+
+                case L't':
+                  *c = L'\t';
+                  break;
+
+                default:
+                  TODO_IMPL
+              }
+            }
+          }
+
+          node->nd_value = new ObjString(std::move(s));
           break;
+        }
 
         default:
           TODO_IMPL
@@ -168,6 +192,12 @@ Node* Parser::statement()
     }
 
     return node;
+  }
+
+  //
+  // for
+  if (this->eat("for")) {
+    auto node = new Node(ND_For, this->ate);
   }
 
   return this->factor();

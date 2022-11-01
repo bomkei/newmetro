@@ -28,7 +28,7 @@ Object* Evaluator::eval(Node* node)
       auto ret = gcnew<ObjVector>();
 
       for (auto&& x : node->list) {
-        ret->list.emplace_back(this->eval(x));
+        ret->elements.emplace_back(this->eval(x));
       }
 
       return ret;

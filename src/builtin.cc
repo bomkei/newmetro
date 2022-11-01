@@ -1,7 +1,8 @@
 #include "metro.h"
 
-#define blambda(e) \
-  [](Node * node, std::vector<Object*> const& args) -> Object* e
+#define blambda(e) [](Node * node, BF_Args const& args) -> Object* e
+
+using BF_Args = std::vector<Object*>;
 
 BuiltinFunc::BuiltinFunc(char const* name, FuncPointer func)
     : name(name),
@@ -12,7 +13,8 @@ BuiltinFunc::BuiltinFunc(char const* name, FuncPointer func)
 namespace {
 
 // print
-auto const bfun_print = blambda({
+Object* bf_print(Node* node, BF_Args const& args)
+{
   auto ret = new ObjLong;
 
   for (auto&& arg : args) {
@@ -24,10 +26,11 @@ auto const bfun_print = blambda({
   }
 
   return ret;
-});
+};
 
 // format
-auto const bfun_format = blambda({
+Object* bf_format(Node* node, BF_Args const& args)
+{
   if (args.empty() || !args[0]->type.equals(TYPE_String)) {
     Error(ERR_IllegalFunctionCall, node).emit().exit();
   }
@@ -61,7 +64,7 @@ auto const bfun_format = blambda({
   }
 
   return ret;
-});
+}
 
 }  // namespace
 
@@ -81,20 +84,31 @@ std::vector<BuiltinFunc> const BuiltinFunc::builtin_functions = {
        }
 
        for (auto it = args.begin() + 1; it != args.end(); it++)
-         ((ObjVector*)args[0])->list.emplace_back(*it);
+         ((ObjVector*)args[0])->elements.emplace_back(*it);
 
        return args[0];
      })},
 
     // format
-    {"format", bfun_format},
+    {"format", bf_format},
 
     // print
-    {"print", bfun_print},
+    {"print", bf_print},
+
+    // printf
+    {"printf", blambda({
+       auto s = (ObjString*)bf_format(node, args);
+
+       std::cout << s->to_string();
+
+       auto ret = new ObjLong(s->value.length());
+
+       return ret;
+     })},
 
     // println
     {"println", blambda({
-       auto ret = bfun_print(node, args);
+       auto ret = bf_print(node, args);
 
        std::cout << std::endl;
 

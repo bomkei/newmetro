@@ -301,7 +301,13 @@ std::string ObjImmediate<bool, TYPE_Bool>::to_string() const;
 struct ObjString : Object {
   std::wstring value;
 
-  ObjString(std::wstring const& val = L"")
+  ObjString(std::wstring&& val = L"")
+      : Object(TYPE_String),
+        value(std::move(val))
+  {
+  }
+
+  ObjString(std::wstring const& val)
       : Object(TYPE_String),
         value(val)
   {
@@ -349,26 +355,27 @@ struct ObjFloat : Object {
   }
 };
 
-struct ObjTuple : Object {
+template <TypeKind k, char begin, char end>
+struct ObjList : Object {
   std::vector<Object*> elements;
 
-  ObjTuple()
-      : Object(TYPE_Tuple)
+  ObjList()
+      : Object(k)
   {
   }
 
   std::string to_string() const override
   {
-    return "(" +
+    return begin +
            Utils::join<Object*>(
                ", ", this->elements,
                [](auto x) { return x->to_string(); }) +
-           ")";
+           end;
   }
 
-  ObjTuple* clone() const override
+  ObjList* clone() const override
   {
-    auto x = new ObjTuple;
+    auto x = new ObjList<k, begin, end>;
 
     for (auto&& elem : this->elements) {
       x->elements.emplace_back(elem->clone());
@@ -378,34 +385,8 @@ struct ObjTuple : Object {
   }
 };
 
-struct ObjVector : Object {
-  std::vector<Object*> list;
-
-  ObjVector()
-      : Object(TYPE_Vector)
-  {
-  }
-
-  std::string to_string() const override
-  {
-    return "[" +
-           Utils::join<Object*>(
-               ", ", this->list,
-               [](auto x) { return x->to_string(); }) +
-           "]";
-  }
-
-  ObjVector* clone() const override
-  {
-    auto x = new ObjVector;
-
-    for (auto&& item : this->list) {
-      x->list.emplace_back(item->clone());
-    }
-
-    return x;
-  }
-};
+using ObjTuple = ObjList<TYPE_Tuple, '(', ')'>;
+using ObjVector = ObjList<TYPE_Vector, '[', ']'>;
 
 struct Node;
 struct BuiltinFunc;
