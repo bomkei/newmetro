@@ -64,21 +64,6 @@ Object* Evaluator::eval(Node* node)
     //
     // call function
     case ND_Callfunc: {
-      // find builtin
-      // if (node->nd_lhs->kind == ND_Variable) {
-      //   for (auto&& bfun : BuiltinFunc::builtin_functions) {
-      //     if (bfun.name == node->nd_lhs->token->str) {
-      //       std::vector<Object*> args;
-
-      //       for (auto&& x : node->list) {
-      //         args.emplace_back(this->eval(x));
-      //       }
-
-      //       return bfun.func(node, args);
-      //     }
-      //   }
-      // }
-
       auto functor =
           (ObjFunction*)this->eval(node->nd_callfunc_functor);
 
