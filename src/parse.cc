@@ -203,59 +203,62 @@ Node* Parser::statement()
   return this->factor();
 }
 
-Node* Parser::callfunc()
+Node* Parser::member_access()
 {
   auto x = this->statement();
 
-  if (this->eat("(")) {
-    auto nd = new Node(ND_Callfunc, this->ate);
+  while (this->check()) {
+    if (this->eat(".")) {
+      if (this->cur->kind != TOK_Ident) {
+        Error(ERR_InvalidSyntax, this->cur).emit().exit();
+      }
 
-    nd->nd_callfunc_functor = x;
+      auto y = this->statement();
 
-    if (!this->eat(")")) {
-      do {
-        nd->list.emplace_back(this->expr());
-      } while (this->eat(","));
-
-      this->expect(")");
+      if (y->kind == ND_Callfunc) {
+        y->list.insert(y->list.begin(), x);
+        x = y;
+      }
+      else {
+        x = new Node(ND_MemberAccess, this->ate, x,
+                     this->statement());
+      }
     }
+    else if (this->eat("(")) {
+      auto nd = new Node(ND_Callfunc, this->ate);
 
-    return nd;
-  }
+      nd->nd_callfunc_functor = x;
 
-  return x;
-}
+      if (!this->eat(")")) {
+        do {
+          nd->list.emplace_back(this->expr());
+        } while (this->eat(","));
 
-Node* Parser::subscript()
-{
-  auto x = this->callfunc();
+        this->expect(")");
+      }
 
-  while (this->eat("[")) {
-    x = new Node(ND_Subscript, this->ate, x, this->expr());
-
-    this->expect("]");
-  }
-
-  return x;
-}
-
-Node* Parser::member_access()
-{
-  auto x = this->subscript();
-
-  while (this->eat(".")) {
-    if (this->cur->kind != TOK_Ident) {
-      Error(ERR_InvalidSyntax, this->cur).emit().exit();
+      x = nd;
     }
-
-    auto y = this->subscript();
-
-    if (y->kind == ND_Callfunc) {
-      y->list.insert(y->list.begin(), x);
-      x = y;
+    else if (this->eat("[")) {
+      x = new Node(ND_Subscript, this->ate, x, this->expr());
+      this->expect("]");
+    }
+    else if (this->eat("++")) {
+      x = new Node(
+          ND_Sub, this->ate,
+          this->new_assign(ND_Add, this->ate, x,
+                           this->new_value_nd(new ObjLong(1))),
+          this->new_value_nd(new ObjLong(1)));
+    }
+    else if (this->eat("--")) {
+      x = new Node(
+          ND_Add, this->ate,
+          this->new_assign(ND_Sub, this->ate, x,
+                           this->new_value_nd(new ObjLong(1))),
+          this->new_value_nd(new ObjLong(1)));
     }
     else {
-      x = new Node(ND_MemberAccess, this->ate, x, this->subscript());
+      break;
     }
   }
 
@@ -417,8 +420,7 @@ Node* Parser::assign()
     x = new Node(ND_Assign, this->ate, x, this->assign());
 
   if (this->eat("+="))
-    x = new Node(ND_Assign, this->ate, x,
-                 new Node(ND_Add, this->ate, x, this->assign()));
+    x = this->new_assign(ND_Add, this->ate, x, this->assign());
 
   if (this->eat("-="))
     x = new Node(ND_Assign, this->ate, x,
@@ -583,4 +585,11 @@ Node* Parser::new_value_nd(Object* obj)
   x->nd_value = obj;
 
   return x;
+}
+
+Node* Parser::new_assign(NodeKind kind, Token* token, Node* lhs,
+                         Node* rhs)
+{
+  return new Node(ND_Assign, token, lhs,
+                  new Node(kind, token, lhs, rhs));
 }

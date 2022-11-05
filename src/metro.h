@@ -119,7 +119,7 @@ template <class... Args>
 std::string format(char const* fmt, Args&&... args)
 {
   static char buf[0x1000];
-  sprintf(buf, fmt, std::forward<Args...>(args...));
+  sprintf(buf, fmt, args...);
   return buf;
 }
 
@@ -406,7 +406,7 @@ struct ObjFunction : Object {
   std::string to_string() const override
   {
     return Utils::format(
-        "<func 0x%X>",
+        "<%sfunc 0x%X>", this->builtin ? "builtin-" : "",
         std::hash<void*>()(this->is_builtin ? (void*)this->builtin
                                             : this->func));
   }
@@ -414,6 +414,16 @@ struct ObjFunction : Object {
   ObjFunction* clone() const override
   {
     return new ObjFunction(*this);
+  }
+
+  static ObjFunction* from_builtin(BuiltinFunc const& b)
+  {
+    auto x = new ObjFunction(nullptr);
+
+    x->is_builtin = true;
+    x->builtin = &b;
+
+    return x;
   }
 };
 
@@ -660,9 +670,7 @@ class Parser {
   Node* factor();
 
   Node* statement();
-  Node* callfunc();
 
-  Node* subscript();
   Node* member_access();
   Node* unary();
 
@@ -706,6 +714,7 @@ class Parser {
   Node* expect_scope();
 
   Node* new_value_nd(Object*);
+  Node* new_assign(NodeKind kind, Token* token, Node* lhs, Node* rhs);
 
   Token* cur;
   Token* ate;
@@ -760,6 +769,8 @@ class Evaluator {
   Scope& get_cur_scope();
 
   Object*& get_var(Token* name);
+
+  Object*& eval_subscript(Node* node, Object* lhs, Object* index);
 
   std::list<Scope> scope_stack;
   std::list<Node*> call_stack;
@@ -818,6 +829,8 @@ enum ErrorKind {
   ERR_IllegalFunctionCall,
   ERR_TooFewArguments,
   ERR_TooManyArguments,
+
+  ERR_SubscriptOutOfRange,
 };
 
 class Error {
@@ -881,7 +894,15 @@ T* gcnew(Args&&... args)
     obj = new T;
   }
 
-  // todo: append
+  // todo: append to gc
+
+  return obj;
+}
+
+template <std::derived_from<Object> T>
+static inline T* gcvia(T* obj)
+{
+  // todo: append to gc
 
   return obj;
 }

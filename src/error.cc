@@ -19,6 +19,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_IllegalFunctionCall, "illegal function call"},
     {ERR_TooFewArguments, "too few arguments"},
     {ERR_TooManyArguments, "too many arguments"},
+    {ERR_SubscriptOutOfRange, "subscript out of range"},
 };
 
 static char const* get_err_msg(ErrorKind kind)

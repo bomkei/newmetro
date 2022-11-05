@@ -56,7 +56,7 @@ Object* Evaluator::compute_expr(Node* node, Object* lhs, Object* rhs)
 
   this->adjust_object_type(lhs, rhs);
 
-  Object* result = lhs;
+  Object* result = lhs->clone();
   auto typekind = lhs->type.kind;
 
   if (lhs->type.equals(rhs->type)) {

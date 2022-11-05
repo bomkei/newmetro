@@ -47,26 +47,37 @@ Object* Evaluator::eval(Node* node)
     }
 
     case ND_Variable: {
+      for (auto&& bfun : BuiltinFunc::builtin_functions) {
+        if (bfun.name == node->token->str) {
+          return gcvia<ObjFunction>(ObjFunction::from_builtin(bfun));
+        }
+      }
+
       return this->eval_lvalue(node)->clone();
+    }
+
+    case ND_Subscript: {
+      return this->eval_subscript(node, this->eval(node->nd_lhs),
+                                  this->eval(node->nd_rhs));
     }
 
     //
     // call function
     case ND_Callfunc: {
       // find builtin
-      if (node->nd_lhs->kind == ND_Variable) {
-        for (auto&& bfun : BuiltinFunc::builtin_functions) {
-          if (bfun.name == node->nd_lhs->token->str) {
-            std::vector<Object*> args;
+      // if (node->nd_lhs->kind == ND_Variable) {
+      //   for (auto&& bfun : BuiltinFunc::builtin_functions) {
+      //     if (bfun.name == node->nd_lhs->token->str) {
+      //       std::vector<Object*> args;
 
-            for (auto&& x : node->list) {
-              args.emplace_back(this->eval(x));
-            }
+      //       for (auto&& x : node->list) {
+      //         args.emplace_back(this->eval(x));
+      //       }
 
-            return bfun.func(node, args);
-          }
-        }
-      }
+      //       return bfun.func(node, args);
+      //     }
+      //   }
+      // }
 
       auto functor =
           (ObjFunction*)this->eval(node->nd_callfunc_functor);
@@ -74,6 +85,16 @@ Object* Evaluator::eval(Node* node)
       // not a function
       if (!functor->type.equals(TYPE_Function)) {
         Error(ERR_TypeMismatch, node->token).emit().exit();
+      }
+
+      if (functor->is_builtin) {
+        std::vector<Object*> args;
+
+        for (auto&& x : node->list) {
+          args.emplace_back(this->eval(x));
+        }
+
+        return functor->builtin->func(node, args);
       }
 
       //
@@ -234,9 +255,11 @@ Object* Evaluator::eval(Node* node)
     case ND_Assign: {
       auto& dest = this->eval_lvalue(node->nd_lhs);
 
-      dest = this->eval(node->nd_rhs);
+      auto src = this->eval(node->nd_rhs);
 
-      return dest;
+      dest = src;
+
+      return src;
     }
   }
 
@@ -257,6 +280,12 @@ Object*& Evaluator::eval_lvalue(Node* node)
       }
 
       return ret;
+    }
+
+    case ND_Subscript: {
+      return this->eval_subscript(node,
+                                  this->eval_lvalue(node->nd_lhs),
+                                  this->eval(node->nd_rhs));
     }
   }
 
@@ -286,4 +315,30 @@ Object*& Evaluator::get_var(Token* name)
   }
 
   Error(ERR_UndefinedVariable, name).emit().exit();
+}
+
+Object*& Evaluator::eval_subscript(Node* node, Object* lhs,
+                                   Object* index)
+{
+  if (!lhs->type.equals(TYPE_Vector)) {
+    Error(ERR_TypeMismatch, node->nd_lhs)
+        .suggest(node->nd_lhs, "expected vector")
+        .emit()
+        .exit();
+  }
+
+  if (!index->type.equals(TYPE_Int)) {
+    Error(ERR_TypeMismatch, node->nd_rhs)
+        .suggest(node->nd_rhs, "expected integer")
+        .emit()
+        .exit();
+  }
+
+  auto ival = ((ObjLong*)index)->value;
+
+  if (ival < 0 || ival >= ((ObjVector*)lhs)->elements.size()) {
+    Error(ERR_SubscriptOutOfRange, node->nd_rhs).emit().exit();
+  }
+
+  return ((ObjVector*)lhs)->elements[(unsigned)ival];
 }

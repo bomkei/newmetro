@@ -19,6 +19,9 @@ static char const* long_punctuators[]{
     // 関数の戻り値の型を指定
     "->",
 
+    "++",
+    "--",
+
     // 複合代入
     "+=",
     "-=",
