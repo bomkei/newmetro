@@ -664,6 +664,7 @@ class Parser {
 
   Node* subscript();
   Node* member_access();
+  Node* unary();
 
   Node* mul();
   Node* add();
@@ -703,6 +704,8 @@ class Parser {
   Node* expect_type();
 
   Node* expect_scope();
+
+  Node* new_value_nd(Object*);
 
   Token* cur;
   Token* ate;

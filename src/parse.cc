@@ -262,17 +262,28 @@ Node* Parser::member_access()
   return x;
 }
 
+Node* Parser::unary()
+{
+  if (this->eat("-")) {
+    return new Node(ND_Sub, this->ate,
+                    this->new_value_nd(new ObjLong(0)),
+                    this->member_access());
+  }
+
+  return this->member_access();
+}
+
 Node* Parser::mul()
 {
-  auto x = this->member_access();
+  auto x = this->unary();
 
   while (this->check()) {
     if (this->eat("*"))
-      x = new Node(ND_Mul, this->ate, x, this->member_access());
+      x = new Node(ND_Mul, this->ate, x, this->unary());
     else if (this->eat("/"))
-      x = new Node(ND_Div, this->ate, x, this->member_access());
+      x = new Node(ND_Div, this->ate, x, this->unary());
     else if (this->eat("%"))
-      x = new Node(ND_Mod, this->ate, x, this->member_access());
+      x = new Node(ND_Mod, this->ate, x, this->unary());
     else
       break;
   }
@@ -563,4 +574,13 @@ Node* Parser::expect_scope()
   }
 
   Error(ERR_BracketNotClosed, node->token).emit().exit();
+}
+
+Node* Parser::new_value_nd(Object* obj)
+{
+  auto x = new Node(ND_Value);
+
+  x->nd_value = obj;
+
+  return x;
 }
