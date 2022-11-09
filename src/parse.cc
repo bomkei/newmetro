@@ -208,13 +208,17 @@ Node* Parser::member_access()
   auto x = this->statement();
 
   while (this->check()) {
+    // member access
     if (this->eat(".")) {
+      // expect identifier
       if (this->cur->kind != TOK_Ident) {
         Error(ERR_InvalidSyntax, this->cur).emit().exit();
       }
 
+      // right
       auto y = this->statement();
 
+      // if consume call-func expr, move left side into first argument
       if (y->kind == ND_Callfunc) {
         y->list.insert(y->list.begin(), x);
         x = y;
@@ -224,6 +228,8 @@ Node* Parser::member_access()
                      this->statement());
       }
     }
+
+    // functor
     else if (this->eat("(")) {
       auto nd = new Node(ND_Callfunc, this->ate);
 
@@ -239,10 +245,14 @@ Node* Parser::member_access()
 
       x = nd;
     }
+
+    // subscript
     else if (this->eat("[")) {
       x = new Node(ND_Subscript, this->ate, x, this->expr());
       this->expect("]");
     }
+
+    // post inclement
     else if (this->eat("++")) {
       x = new Node(
           ND_Sub, this->ate,
@@ -250,6 +260,8 @@ Node* Parser::member_access()
                            this->new_value_nd(new ObjLong(1))),
           this->new_value_nd(new ObjLong(1)));
     }
+
+    // post declement
     else if (this->eat("--")) {
       x = new Node(
           ND_Add, this->ate,
@@ -267,11 +279,26 @@ Node* Parser::member_access()
 
 Node* Parser::unary()
 {
+  // unary declement
   if (this->eat("-")) {
     return new Node(ND_Sub, this->ate,
                     this->new_value_nd(new ObjLong(0)),
                     this->member_access());
   }
+
+  // pre declement
+  else if (this->eat("--")) {
+    return this->new_assign(ND_Sub, this->ate, this->member_access(),
+                            this->new_value_nd(new ObjLong(1)));
+  }
+
+  // pre inclement
+  else if (this->eat("++")) {
+    return this->new_assign(ND_Add, this->ate, this->member_access(),
+                            this->new_value_nd(new ObjLong(1)));
+  }
+
+  this->eat("+");
 
   return this->member_access();
 }
