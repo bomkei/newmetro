@@ -2,19 +2,6 @@
 
 #define nd_kind_expr_begin ND_Add
 
-void Evaluator::adjust_object_type(Object*& lhs, Object*& rhs)
-{
-  if (lhs->type.kind > rhs->type.kind) {
-    std::swap(lhs, rhs);
-  }
-
-  if (!lhs->type.equals(rhs->type)) {
-    if (lhs->type.kind == TYPE_Int && rhs->type.kind == TYPE_Float) {
-      lhs = new ObjFloat((float)((ObjLong*)lhs)->value);
-    }
-  }
-}
-
 Object* Evaluator::compute_expr(Node* node, Object* lhs, Object* rhs)
 {
 #define done goto finish
@@ -197,4 +184,30 @@ finish:;
 
 __invalid_op:
   Error(ERR_InvalidOperator, node->token).emit().exit();
+}
+
+Object*& Evaluator::compute_subscript(Node* node, Object* lhs,
+                                      Object* index)
+{
+  if (!lhs->type.equals(TYPE_Vector)) {
+    Error(ERR_TypeMismatch, node->nd_lhs)
+        .suggest(node->nd_lhs, "expected vector")
+        .emit()
+        .exit();
+  }
+
+  if (!index->type.equals(TYPE_Int)) {
+    Error(ERR_TypeMismatch, node->nd_rhs)
+        .suggest(node->nd_rhs, "expected integer")
+        .emit()
+        .exit();
+  }
+
+  auto ival = ((ObjLong*)index)->value;
+
+  if (ival < 0 || ival >= ((ObjVector*)lhs)->elements.size()) {
+    Error(ERR_SubscriptOutOfRange, node->nd_rhs).emit().exit();
+  }
+
+  return ((ObjVector*)lhs)->elements[(unsigned)ival];
 }

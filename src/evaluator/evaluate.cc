@@ -1,19 +1,26 @@
 #include "metro.h"
 
-Evaluator::CallStack::CallStack(Node* func)
-    : func(func),
-      is_returned(false),
-      result(nullptr)
+Object*& Evaluator::eval_lvalue(Node* node)
 {
-}
+  switch (node->kind) {
+    case ND_Variable: {
+      auto& ret = this->get_var(node->token);
 
-Evaluator::LoopContext Evaluator::LoopContext::from_For(Node* nd_for)
-{
-  LoopContext ctx;
+      if (!ret) {
+        Error(ERR_UninitializedVariable, node).emit().exit();
+      }
 
-  ctx.node = nd_for;
+      return ret;
+    }
 
-  return ctx;
+    case ND_Subscript: {
+      return this->compute_subscript(node,
+                                     this->eval_lvalue(node->nd_lhs),
+                                     this->eval(node->nd_rhs));
+    }
+  }
+
+  Error(ERR_TypeMismatch, node).emit().exit();
 }
 
 Object* Evaluator::eval(Node* node)
@@ -73,8 +80,8 @@ Object* Evaluator::eval(Node* node)
     }
 
     case ND_Subscript: {
-      return this->eval_subscript(node, this->eval(node->nd_lhs),
-                                  this->eval(node->nd_rhs));
+      return this->compute_subscript(node, this->eval(node->nd_lhs),
+                                     this->eval(node->nd_rhs));
     }
 
     //
@@ -326,27 +333,4 @@ Object* Evaluator::eval(Node* node)
   auto rhs = this->eval(node->nd_rhs);
 
   return this->compute_expr(node, lhs, rhs);
-}
-
-Object*& Evaluator::eval_lvalue(Node* node)
-{
-  switch (node->kind) {
-    case ND_Variable: {
-      auto& ret = this->get_var(node->token);
-
-      if (!ret) {
-        Error(ERR_UninitializedVariable, node).emit().exit();
-      }
-
-      return ret;
-    }
-
-    case ND_Subscript: {
-      return this->eval_subscript(node,
-                                  this->eval_lvalue(node->nd_lhs),
-                                  this->eval(node->nd_rhs));
-    }
-  }
-
-  Error(ERR_TypeMismatch, node).emit().exit();
 }

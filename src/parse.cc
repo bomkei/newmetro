@@ -548,9 +548,15 @@ Node* Parser::parse()
   return node;
 }
 
-bool Parser::check() { return this->cur->kind != TOK_End; }
+bool Parser::check()
+{
+  return this->cur->kind != TOK_End;
+}
 
-void Parser::next() { this->cur = this->cur->next; }
+void Parser::next()
+{
+  this->cur = this->cur->next;
+}
 
 bool Parser::eat(std::string_view s)
 {
@@ -629,7 +635,10 @@ Node* Parser::expect_scope()
   Error(ERR_BracketNotClosed, node->token).emit().exit();
 }
 
-bool Parser::eat_semi() { return this->eat(";"); }
+bool Parser::eat_semi()
+{
+  return this->eat(";");
+}
 
 void Parser::expect_semi()
 {

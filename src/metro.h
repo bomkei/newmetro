@@ -270,9 +270,15 @@ struct ObjNone : Object {
   {
   }
 
-  std::string to_string() const override { return "none"; }
+  std::string to_string() const override
+  {
+    return "none";
+  }
 
-  ObjNone* clone() const override { return new ObjNone; }
+  ObjNone* clone() const override
+  {
+    return new ObjNone;
+  }
 };
 
 template <class T, TypeKind kind>
@@ -323,9 +329,15 @@ struct ObjString : Object {
   {
   }
 
-  void append(wchar_t ch) { this->value.push_back(ch); }
+  void append(wchar_t ch)
+  {
+    this->value.push_back(ch);
+  }
 
-  void append(std::wstring const& s) { this->value.append(s); }
+  void append(std::wstring const& s)
+  {
+    this->value.append(s);
+  }
 
   std::string to_string() const override
   {
@@ -416,7 +428,10 @@ struct ObjRange : Object {
     return Utils::format("range(%lu, %lu)", this->begin, this->end);
   }
 
-  ObjRange* clone() const { return new ObjRange(begin, end); }
+  ObjRange* clone() const
+  {
+    return new ObjRange(begin, end);
+  }
 };
 
 struct Node;
@@ -643,7 +658,10 @@ struct Node {
   Node(NodeKind kind, Token* token, Node* lhs, Node* rhs);
 
   // ノード追加
-  Node*& append(Node* node) { return this->list.emplace_back(node); }
+  Node*& append(Node* node)
+  {
+    return this->list.emplace_back(node);
+  }
 
   static Node* new_list(NodeKind kind, Token* token, Node* first)
   {
@@ -840,16 +858,26 @@ class Evaluator {
   };
 
  public:
-  Evaluator() {}
+  Evaluator()
+  {
+  }
 
   Object* eval(Node* node);
   Object*& eval_lvalue(Node* node);
 
-  void adjust_object_type(Object*& lhs, Object*& rhs);
-
   Object* compute_expr(Node* node, Object* lhs, Object* rhs);
+  Object*& compute_subscript(Node* node, Object* lhs, Object* index);
+  Object*& compute_member_variable();
 
  private:
+  //
+  // find the variable matching with name->str in all entered scopes
+  Object*& get_var(Token* name);
+
+  //
+  // adjust the type of object for compute expr-node.
+  void adjust_object_type(Object*& lhs, Object*& rhs);
+
   //
   // create a new scope from node(ND_Scope) and append it to stack
   Scope& enter_scope(Node* node);
@@ -857,6 +885,10 @@ class Evaluator {
   //
   // remove scope
   void leave_scope();
+
+  //
+  // get current scope
+  Scope& get_cur_scope();
 
   //
   // continue current loop
@@ -874,18 +906,6 @@ class Evaluator {
   // loop condition controllers
   void loop_continue();
   void loop_break();
-
-  Node* get_current_loop_block();
-
-  //
-  // get current scope
-  Scope& get_cur_scope();
-
-  //
-  // find the variable matching with name->str in all entered scopes
-  Object*& get_var(Token* name);
-
-  Object*& eval_subscript(Node* node, Object* lhs, Object* index);
 
   std::list<Scope> scope_stack;
   std::list<Node*> call_stack;
@@ -992,7 +1012,9 @@ class Error {
     }
 
    private:
-    ErrLocation() {}
+    ErrLocation()
+    {
+    }
   };
 
   struct Suggestion {

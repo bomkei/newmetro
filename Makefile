@@ -9,7 +9,8 @@ BINDIR	= /usr/local/bin
 TOPDIR	?= $(CURDIR)
 BUILD		= build
 INCLUDE	= include
-SOURCES	= src
+SOURCES	= src \
+	src/evaluator
 
 OPTFLAGS		= -O0 -g
 WARNFLAGS		= -Wall -Wextra -Wno-switch

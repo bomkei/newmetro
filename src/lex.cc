@@ -221,9 +221,15 @@ void Lexer::initialize()
   }
 }
 
-bool Lexer::check() { return this->position < this->length; }
+bool Lexer::check()
+{
+  return this->position < this->length;
+}
 
-char Lexer::peek() { return this->source.text[this->position]; }
+char Lexer::peek()
+{
+  return this->source.text[this->position];
+}
 
 int Lexer::match(std::string_view s)
 {

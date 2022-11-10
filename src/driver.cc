@@ -2,7 +2,10 @@
 
 static Driver* __inst;
 
-Driver::Driver() { __inst = this; }
+Driver::Driver()
+{
+  __inst = this;
+}
 
 Object* Driver::execute_script()
 {
@@ -30,4 +33,7 @@ int Driver::main(int argc, char** argv)
   return 0;
 }
 
-Source const& Driver::get_current_source() { return __inst->source; }
+Source const& Driver::get_current_source()
+{
+  return __inst->source;
+}
