@@ -1,28 +1,32 @@
 #include "metro.h"
 
 static char const punctuators[] =
-    "(){}[]<>"  // 括弧
-    "=+-*/%"    // 代入、基本演算
-    "|^&"       // ビット演算
-    "@"         // 関数再帰 (自分自身の呼び出し)
+    "(){}[]<>"  // brackets
+    "=+-*/%"    // assign, expr
+    "|^&"       // bit expr
+    "@"         // self call
     ".,;:"
     "!?";
 
 static char const* long_punctuators[]{
-    // 三方比較演算子
+    // spaceship
     "<=>",
 
-    // シフト代入
+    // shift assign
     "<<=",
     ">>=",
 
-    // 関数の戻り値の型を指定
+    // range
+    "..",
+
+    // function return type specifier
     "->",
 
+    // post/pre incl, decl
     "++",
     "--",
 
-    // 複合代入
+    // composite assign
     "+=",
     "-=",
     "*=",
@@ -32,11 +36,11 @@ static char const* long_punctuators[]{
     "^=",
     "|=",
 
-    // シフト
+    // shift
     ">>",
     "<<",
 
-    // 比較
+    // compare
     ">=",
     "<=",
     "==",
@@ -48,11 +52,11 @@ static char const* long_punctuators[]{
 };
 
 static std::string_view const keywords[]{
-    // 即値
+    // immediate value
     "true",
     "false",
 
-    // 型名
+    // type name
     "none",
     "int",
     "float",
@@ -63,7 +67,7 @@ static std::string_view const keywords[]{
     "vec",
     "func",
 
-    // 制御構文
+    // control expr
     "if",
     "else",
     "for",
@@ -76,17 +80,15 @@ static std::string_view const keywords[]{
     "continue",
     "return",
 
-    // 変数定義
+    // variable declaration
     "let",
 
-    // 関数
+    // function
     "fn",
-    // "self",
+    "self",
 
-    // クラス
+    // global
     "class",
-
-    // 名前空間
     "namespace",
 };
 

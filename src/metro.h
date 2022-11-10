@@ -5,6 +5,7 @@
 #include <cstring>
 #include <functional>
 #include <iostream>
+#include <sstream>
 #include <list>
 #include <locale>
 #include <map>
@@ -16,7 +17,7 @@
 #define COL_BLACK "\e[30m"
 #define COL_RED "\e[31m"
 #define COL_GREEN "\033[32m"
-#define COL_YELLOW "\033[33m"
+#define COL_YELLOW "\e[33m"
 #define COL_BLUE "\033[34m"
 #define COL_MAGENTA "\033[35m"
 #define COL_CYAN "\033[36;5m"
@@ -217,6 +218,8 @@ enum TypeKind {
   TYPE_String,
   TYPE_Tuple,
   TYPE_Vector,
+  TYPE_Range,
+  TYPE_Args,
   TYPE_Function
 };
 
@@ -388,6 +391,27 @@ struct ObjList : Object {
 using ObjTuple = ObjList<TYPE_Tuple, '(', ')'>;
 using ObjVector = ObjList<TYPE_Vector, '[', ']'>;
 
+struct ObjRange : Object {
+  using ValueType = int64_t;
+
+  ValueType begin;
+  ValueType end;
+
+  ObjRange(ValueType begin, ValueType end)
+      : Object(TYPE_Range),
+        begin(begin),
+        end(end)
+  {
+  }
+
+  std::string to_string() const
+  {
+    return Utils::format("range(%lu, %lu)", this->begin, this->end);
+  }
+
+  ObjRange* clone() const { return new ObjRange(begin, end); }
+};
+
 struct Node;
 struct BuiltinFunc;
 struct ObjFunction : Object {
@@ -509,6 +533,8 @@ enum NodeKind {
   ND_BitXor,
   ND_BitOr,
 
+  ND_Range,
+
   ND_LogAnd,
   ND_LogOr,
 
@@ -619,19 +645,27 @@ struct Source {
   std::string path;
   std::string text;
 
+  std::vector<std::pair<size_t, size_t>> line_range_list;
+
   Source();
   Source(char const* path);
 
   bool readfile(char const* path);
+
+  void init_line_list();
+
+  // linenum, begin, end
+  std::tuple<size_t, size_t, size_t> get_line(size_t pos) const;
 };
 
 struct BuiltinFunc {
-  using FuncPointer = Object* (*)(Node*, std::vector<Object*> const&);
+  using FuncType =
+      std::function<Object*(Node*, std::vector<Object*> const&)>;
 
   char const* name;
-  FuncPointer func;
+  FuncType func;
 
-  BuiltinFunc(char const* name, FuncPointer func);
+  BuiltinFunc(char const* name, FuncType func);
 
   static std::vector<BuiltinFunc> const builtin_functions;
 };
@@ -671,6 +705,8 @@ class Parser {
 
   Node* statement();
 
+  Node* callfunc();
+
   Node* member_access();
   Node* unary();
 
@@ -685,6 +721,8 @@ class Parser {
   Node* bit_and();
   Node* bit_xor();
   Node* bit_or();
+
+  Node* range();
 
   Node* log_and();
   Node* log_or();
@@ -834,7 +872,7 @@ enum ErrorKind {
 };
 
 class Error {
-  enum LocationType {
+  enum LocationType : uint8_t {
     LOC_Position,
     LOC_Token,
     LOC_Node
@@ -847,6 +885,8 @@ class Error {
     size_t end;
     size_t linenum;
 
+    mutable size_t line_begin{};
+
     union {
       size_t pos;
       Token* token;
@@ -857,16 +897,47 @@ class Error {
     ErrLocation(Token*);
     ErrLocation(Node*);
 
-    std::vector<std::string> trim_source();
+    std::vector<std::string> trim_source() const;
+
+    std::string to_string() const
+    {
+      return Utils::format(
+          "{ErrLocation %p: type=%d, begin=%zu, end=%zu}", this,
+          static_cast<int>(this->type), this->begin, this->end);
+    }
+
+    bool equals(ErrLocation const& loc) const
+    {
+      return this->type == loc.type && this->begin == loc.begin &&
+             this->end == loc.end;
+    }
 
    private:
     ErrLocation() {}
   };
 
+  struct Suggestion {
+    ErrLocation loc;
+    std::string msg;
+
+    bool _emitted{};
+
+    Suggestion(ErrLocation loc, std::string&& msg)
+        : loc(loc),
+          msg(std::move(msg))
+    {
+    }
+  };
+
+  enum ErrTextFormat {
+    EF_Main,
+    EF_Help,
+  };
+
  public:
   Error(ErrorKind kind, ErrLocation loc);
 
-  Error& suggest(ErrLocation loc, std::string const& msg);
+  Error& suggest(ErrLocation loc, std::string&& msg);
 
   Error& set_warn();
 
@@ -875,11 +946,27 @@ class Error {
   [[noreturn]] void exit(int code = 1);
 
  private:
+  std::string create_showing_text(ErrLocation const& loc,
+                                  std::string const& msg,
+                                  ErrTextFormat format,
+                                  bool mix_suggest = true);
+
+  std::vector<Suggestion*>* _find_suggest(ErrLocation const& loc)
+  {
+    for (auto&& [l, sv] : this->suggest_map)
+      if (l.equals(loc)) return &sv;
+
+    return nullptr;
+  }
+
   ErrorKind kind;
+  bool is_warn;
 
   ErrLocation loc;
+  std::vector<Suggestion> suggests;
 
-  bool is_warn;
+  std::vector<std::pair<ErrLocation, std::vector<Suggestion*>>>
+      suggest_map;
 };
 
 template <std::derived_from<Object> T, class... Args>
@@ -888,7 +975,7 @@ T* gcnew(Args&&... args)
   T* obj;
 
   if constexpr (sizeof...(args) != 0) {
-    obj = new T(std::forward<Args...>(args...));
+    obj = new T(args...);
   }
   else {
     obj = new T;

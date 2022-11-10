@@ -79,6 +79,10 @@ expr_add:
     case TYPE_Float:
       ((ObjFloat*)result)->value += ((ObjFloat*)rhs)->value;
       done;
+
+    case TYPE_String:
+      ((ObjString*)result)->value += ((ObjString*)rhs)->value;
+      done;
   }
   invalid;
 

@@ -2,6 +2,8 @@
 
 #define COL_ERROR "\033[37;1;4m"
 
+#define COL_ERR_CYAN_UNDERLINE_BOLD_BRIGHT "\e[96;4;1m"
+
 static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_InvalidToken, "invalid token"},
     {ERR_InvalidSyntax, "invalid syntax"},
@@ -94,22 +96,19 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
 }
 
 Error::ErrLocation::ErrLocation(size_t pos)
-    : begin(0),
+    : type(LOC_Position),
+      begin(0),
       end(0),
-      linenum(1),
       pos(pos)
 {
   auto const& source = Driver::get_current_source();
 
-  for (size_t i = 0; i < pos; i++) {
-    if (source.text[i] == '\n') {
-      this->linenum++;
-    }
-  }
+  this->linenum = std::get<0>(source.get_line(pos));
 }
 
 Error::ErrLocation::ErrLocation(Token* token)
-    : begin(token->pos),
+    : type(LOC_Token),
+      begin(token->pos),
       end(token->endpos),
       linenum(token->linenum),
       token(token)
@@ -117,7 +116,8 @@ Error::ErrLocation::ErrLocation(Token* token)
 }
 
 Error::ErrLocation::ErrLocation(Node* node)
-    : begin(0),
+    : type(LOC_Node),
+      begin(0),
       end(0),
       linenum(0),
       node(node)
@@ -136,20 +136,14 @@ Error::ErrLocation::ErrLocation(Node* node)
   }
 }
 
-std::vector<std::string> Error::ErrLocation::trim_source()
+std::vector<std::string> Error::ErrLocation::trim_source() const
 {
-  auto tbegin = this->begin;
-  auto tend = this->end;
-
   auto const& source = Driver::get_current_source();
 
-  while (tbegin > 0 && source.text[tbegin - 1] != '\n') {
-    tbegin--;
-  }
+  auto tbegin = std::get<1>(source.get_line(this->begin));
+  auto tend = std::get<2>(source.get_line(this->end));
 
-  while (tend < source.text.length() && source.text[tend] != '\n') {
-    tend++;
-  }
+  this->line_begin = tbegin;
 
   auto ret = source.text.substr(tbegin, tend - tbegin);
 
@@ -161,7 +155,7 @@ std::vector<std::string> Error::ErrLocation::trim_source()
 
   for (size_t i = tbegin; auto&& c : ret) {
     if (c == '\n') {
-      vec.emplace_back(line + COL_DEFAULT);
+      vec.emplace_back(line);
 
       if (this->begin <= i && i < this->end) {
         line = COL_ERROR;
@@ -189,9 +183,16 @@ Error::Error(ErrorKind kind, Error::ErrLocation loc)
 {
 }
 
-Error& Error::suggest(Error::ErrLocation loc, std::string const& msg)
+Error& Error::suggest(Error::ErrLocation loc, std::string&& msg)
 {
-  std::cout << msg << std::endl;
+  auto& S = this->suggests.emplace_back(loc, std::move(msg));
+
+  if (auto V = this->_find_suggest(loc); V) {
+    V->emplace_back(&S);
+  }
+  else {
+    this->suggest_map.emplace_back(loc, std::vector<Suggestion*>{&S});
+  }
 
   return *this;
 }
@@ -202,30 +203,82 @@ Error& Error::set_warn()
   return *this;
 }
 
-Error& Error::emit()
+//
+// Create text for show in console
+std::string Error::create_showing_text(ErrLocation const& loc,
+                                       std::string const& msg,
+                                       Error::ErrTextFormat format,
+                                       bool mix_suggest)
 {
-  auto msg = get_err_msg(this->kind);
+  std::stringstream ss;
 
   auto const& source = Driver::get_current_source();
-  auto const trimmed = this->loc.trim_source();
+  auto trimmed = loc.trim_source();
 
-  if (this->is_warn)
-    std::cout << COL_YELLOW << "warning: " << msg << std::endl;
-  else
-    std::cout << COL_RED << "error: " << msg << std::endl;
+  ss << msg << std::endl
+     << COL_ERR_CYAN_UNDERLINE_BOLD_BRIGHT << " --> " << source.path
+     << ":" << loc.linenum << ":" << loc.begin - loc.line_begin + 1
+     << std::endl
+     << COL_DEFAULT << "       |" << std::endl;
 
-  std::cout << COL_CYAN << " --> " << source.path << ":"
-            << this->loc.linenum << std::endl
-            << COL_DEFAULT << "       |" << std::endl;
-
-  for (auto linenum = this->loc.linenum; auto&& line : trimmed) {
-    std::cout << Utils::format("%6d | ", linenum) << line
-              << std::endl;
+  for (auto linenum = loc.linenum; auto&& line : trimmed) {
+    line = Utils::format(COL_DEFAULT "%6d | " COL_DEFAULT, linenum) +
+           line;
 
     linenum++;
   }
 
-  std::cout << "       |\n\n";
+  if (mix_suggest) {
+    size_t const ix = trimmed.size();
+
+    auto space = trimmed.emplace_back(
+        "       |" + std::string(trimmed.rbegin()->length(), ' '));
+
+    for (auto&& [L, SV] : this->suggest_map) {
+      for (auto&& S : SV) {
+        if (loc.begin <= L.begin && L.end <= loc.end) {
+          auto linepos = L.end - std::get<1>(source.get_line(L.end));
+
+          trimmed[ix][8 + linepos] = '|';
+
+          trimmed.emplace_back("       | " +
+                               std::string(linepos - 1, ' ') +
+                               COL_MAGENTA + S->msg + COL_DEFAULT);
+
+          S->_emitted = true;
+        }
+      }
+    }
+  }
+
+  for (auto&& line : trimmed) {
+    ss << line << std::endl;
+  }
+
+  ss << "       |\n\n";
+
+  return ss.str();
+}
+
+Error& Error::emit()
+{
+  auto const col = this->is_warn ? COL_YELLOW : COL_RED;
+
+  auto msg = Utils::format(
+      "%s%s" COL_ERR_CYAN_UNDERLINE_BOLD_BRIGHT "[E%04d]\e[0m%s: %s",
+      col, this->is_warn ? "warning" : "error",
+      static_cast<int>(this->kind), col, get_err_msg(this->kind));
+
+  // show main message
+  std::cout << this->create_showing_text(this->loc, msg, EF_Main);
+
+  // show suggests
+  for (auto&& S : this->suggests) {
+    if (!S._emitted) {
+      std::cout << this->create_showing_text(
+          S.loc, COL_MAGENTA "help: " + S.msg, EF_Help);
+    }
+  }
 
   return *this;
 }

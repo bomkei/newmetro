@@ -137,6 +137,10 @@ Object* Evaluator::eval(Node* node)
     }
 
     case ND_Scope: {
+      if (node->list.empty()) {
+        goto __none;
+      }
+
       auto& scope = this->enter_scope(node);
       Object* ret{};
 
@@ -152,6 +156,26 @@ Object* Evaluator::eval(Node* node)
       this->leave_scope();
 
       return ret;
+    }
+
+    case ND_Range: {
+      auto begin = this->eval(node->nd_lhs);
+      auto end = this->eval(node->nd_rhs);
+
+      if (!begin->type.equals(TYPE_Int))
+        Error(ERR_TypeMismatch, node->nd_lhs)
+            .suggest(node->nd_lhs, "expected integer")
+            .emit()
+            .exit();
+
+      if (!end->type.equals(TYPE_Int))
+        Error(ERR_TypeMismatch, node->nd_rhs)
+            .suggest(node->nd_rhs, "expected integer")
+            .emit()
+            .exit();
+
+      return gcnew<ObjRange>(((ObjLong*)begin)->value,
+                             ((ObjLong*)end)->value);
     }
 
     case ND_Bigger:

@@ -215,18 +215,7 @@ Node* Parser::member_access()
         Error(ERR_InvalidSyntax, this->cur).emit().exit();
       }
 
-      // right
-      auto y = this->statement();
-
-      // if consume call-func expr, move left side into first argument
-      if (y->kind == ND_Callfunc) {
-        y->list.insert(y->list.begin(), x);
-        x = y;
-      }
-      else {
-        x = new Node(ND_MemberAccess, this->ate, x,
-                     this->statement());
-      }
+      x = new Node(ND_MemberAccess, this->ate, x, this->statement());
     }
 
     // functor
@@ -241,6 +230,11 @@ Node* Parser::member_access()
         } while (this->eat(","));
 
         this->expect(")");
+      }
+
+      if (x->kind == ND_MemberAccess) {
+        nd->list.insert(nd->list.begin(), x->nd_lhs);
+        nd->nd_callfunc_functor = x->nd_rhs;
       }
 
       x = nd;
@@ -419,12 +413,22 @@ Node* Parser::bit_or()
   return x;
 }
 
-Node* Parser::log_and()
+Node* Parser::range()
 {
   auto x = this->bit_or();
 
+  if (this->eat(".."))
+    return new Node(ND_Range, this->ate, x, this->bit_or());
+
+  return x;
+}
+
+Node* Parser::log_and()
+{
+  auto x = this->range();
+
   while (this->eat("&&"))
-    x = new Node(ND_LogAnd, this->ate, x, this->bit_or());
+    x = new Node(ND_LogAnd, this->ate, x, this->range());
 
   return x;
 }
