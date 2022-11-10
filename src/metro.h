@@ -551,6 +551,7 @@ enum NodeKind {
   ND_For,
   // ND_Loop,
   ND_While,
+  ND_Return,
 
   ND_Let,
 
@@ -615,6 +616,8 @@ if:
 #define nd_for_iterator uni_nd[0]
 #define nd_for_range uni_nd[1]
 #define nd_for_loop_code uni_nd[2]
+
+#define nd_return_expr uni_nd[0]
 
 #define nd_let_name uni_token
 #define nd_let_type uni_nd[1]
@@ -762,6 +765,9 @@ class Parser {
 
   Node* expect_scope();
 
+  bool eat_semi();
+  void expect_semi();
+
   Node* new_value_nd(Object*);
   Node* new_assign(NodeKind kind, Token* token, Node* lhs, Node* rhs);
 
@@ -790,6 +796,8 @@ class Evaluator {
     bool is_skipped;
     Object* lastval;
 
+    bool is_loop_continued{};
+
     size_t cur_index;
 
     explicit Scope(Node* node)
@@ -810,6 +818,27 @@ class Evaluator {
     }
   };
 
+  struct CallStack {
+    Node* func;
+    bool is_returned;
+    Object* result;
+
+    CallStack(Node* func);
+  };
+
+  struct LoopContext {
+    Node* node;
+    Scope* scope;
+
+    Object** pObj_iterator;
+    Object** pObj_range;
+
+    static LoopContext from_For(Node* nd_for);
+
+   private:
+    LoopContext();
+  };
+
  public:
   Evaluator() {}
 
@@ -821,17 +850,47 @@ class Evaluator {
   Object* compute_expr(Node* node, Object* lhs, Object* rhs);
 
  private:
+  //
+  // create a new scope from node(ND_Scope) and append it to stack
   Scope& enter_scope(Node* node);
+
+  //
+  // remove scope
   void leave_scope();
 
+  //
+  // continue current loop
+  LoopContext& enter_for_loop(Node* node);
+
+  //
+  // break current loop
+  void leave_loop();
+
+  //
+  // get the LoopContext just current running
+  LoopContext& get_cur_loop_context();
+
+  //
+  // loop condition controllers
+  void loop_continue();
+  void loop_break();
+
+  Node* get_current_loop_block();
+
+  //
+  // get current scope
   Scope& get_cur_scope();
 
+  //
+  // find the variable matching with name->str in all entered scopes
   Object*& get_var(Token* name);
 
   Object*& eval_subscript(Node* node, Object* lhs, Object* index);
 
   std::list<Scope> scope_stack;
   std::list<Node*> call_stack;
+
+  std::list<LoopContext> loop_stack;
 };
 
 class MegaGC {

@@ -207,6 +207,19 @@ Node* Parser::statement()
     return node;
   }
 
+  //
+  // return
+  if (this->eat("return")) {
+    auto node = new Node(ND_Return, this->ate);
+
+    if (!this->eat(";")) {
+      node->nd_return_expr = this->expr();
+      this->expect_semi();
+    }
+
+    return node;
+  }
+
   return this->factor();
 }
 
@@ -614,6 +627,18 @@ Node* Parser::expect_scope()
   }
 
   Error(ERR_BracketNotClosed, node->token).emit().exit();
+}
+
+bool Parser::eat_semi() { return this->eat(";"); }
+
+void Parser::expect_semi()
+{
+  if (!this->eat_semi())
+    Error(ERR_InvalidSyntax, this->cur->prev)
+        .suggest(this->cur->prev,
+                 "expected semicolon after this token")
+        .emit()
+        .exit();
 }
 
 Node* Parser::new_value_nd(Object* obj)
