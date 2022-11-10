@@ -237,6 +237,13 @@ struct Type {
   {
   }
 
+  Type(TypeKind kind, bool is_mutable, bool is_reference)
+      : kind(kind),
+        is_mutable(is_mutable),
+        is_reference(is_reference)
+  {
+  }
+
   std::string to_string() const;
 
   bool equals(Type const& type) const;
@@ -605,6 +612,10 @@ if:
 #define nd_if_true uni_nd[1]
 #define nd_if_false uni_nd[2]
 
+#define nd_for_iterator uni_nd[0]
+#define nd_for_range uni_nd[1]
+#define nd_for_loop_code uni_nd[2]
+
 #define nd_let_name uni_token
 #define nd_let_type uni_nd[1]
 #define nd_let_init uni_nd[2]
@@ -788,6 +799,15 @@ class Evaluator {
           cur_index(0)
     {
     }
+
+    Variable* find_var(Token* name)
+    {
+      for (auto&& v : this->variables) {
+        if (v.name == name->str) return &v;
+      }
+
+      return nullptr;
+    }
   };
 
  public:
@@ -942,6 +962,8 @@ class Error {
   Error& set_warn();
 
   Error& emit();
+
+  static void check();
 
   [[noreturn]] void exit(int code = 1);
 

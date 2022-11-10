@@ -198,6 +198,13 @@ Node* Parser::statement()
   // for
   if (this->eat("for")) {
     auto node = new Node(ND_For, this->ate);
+
+    node->nd_for_iterator = this->expr();
+    node->nd_for_range = this->expr();
+
+    node->nd_for_loop_code = this->expect_scope();
+
+    return node;
   }
 
   return this->factor();

@@ -13,7 +13,8 @@ Object* Evaluator::eval(Node* node)
       return gcnew<ObjNone>();
 
     case ND_Value:
-      return node->nd_value->clone();
+      // return node->nd_value->clone();
+      return node->nd_value;
 
     case ND_True:
       return gcnew<ObjBool>(true);
@@ -53,7 +54,8 @@ Object* Evaluator::eval(Node* node)
         }
       }
 
-      return this->eval_lvalue(node)->clone();
+      // return this->eval_lvalue(node)->clone();
+      return this->eval_lvalue(node);
     }
 
     case ND_Subscript: {
@@ -123,14 +125,36 @@ Object* Evaluator::eval(Node* node)
                                                 : node->nd_if_false);
     }
 
+    case ND_For: {
+      auto& iterator = this->eval_lvalue(node->nd_for_iterator);
+
+      auto& scope = this->enter_scope(node);
+
+      auto range = this->eval(node->nd_for_range);
+
+      if (!range->type.equals(TYPE_Range)) {
+        Error(ERR_TypeMismatch, node->nd_for_range)
+            .suggest(node->nd_for_range,
+                     "expected `range` type expression")
+            .emit()
+            .exit();
+      }
+
+      this->leave_scope();
+    }
+
     case ND_Let: {
       auto& scope = this->get_cur_scope();
 
-      auto& var = scope.variables.emplace_back(
-          nullptr, node->nd_let_name->str);
+      Variable* pvar{};
+
+      if (!(pvar = scope.find_var(node->nd_let_name))) {
+        pvar = &scope.variables.emplace_back(nullptr,
+                                             node->nd_let_name->str);
+      }
 
       if (node->nd_let_init) {
-        var.value = this->eval(node->nd_let_init);
+        pvar->value = this->eval(node->nd_let_init);
       }
 
       goto __none;

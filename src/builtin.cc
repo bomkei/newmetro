@@ -56,8 +56,7 @@ class BuiltinBuilder {
             .suggest(*nd_arg, "expected `" + formal->to_string() +
                                   "`, but found `" +
                                   act_obj->type.to_string() + "`")
-            .emit()
-            .exit();
+            .emit();
       }
 
       formal++;
@@ -65,7 +64,9 @@ class BuiltinBuilder {
     }
 
     if (formal != this->arg_types.end() && !formal->equals(TYPE_Args))
-      Error(ERR_TooFewArguments, node).emit().exit();
+      Error(ERR_TooFewArguments, node).emit();
+
+    Error::check();
 
     return this->_actual_func(node, actual_args);
   }

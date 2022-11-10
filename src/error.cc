@@ -24,6 +24,8 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_SubscriptOutOfRange, "subscript out of range"},
 };
 
+static size_t err_emitted_count{};
+
 static char const* get_err_msg(ErrorKind kind)
 {
   for (auto&& [k, s] : error_msg_list) {
@@ -239,7 +241,7 @@ std::string Error::create_showing_text(ErrLocation const& loc,
         if (loc.begin <= L.begin && L.end <= loc.end) {
           auto linepos = L.end - std::get<1>(source.get_line(L.end));
 
-          trimmed[ix][8 + linepos] = '|';
+          trimmed[ix][8 + linepos] = '~';
 
           trimmed.emplace_back("       | " +
                                std::string(linepos - 1, ' ') +
@@ -280,7 +282,18 @@ Error& Error::emit()
     }
   }
 
+  if (!this->is_warn) {
+    err_emitted_count++;
+  }
+
   return *this;
+}
+
+void Error::check()
+{
+  if (err_emitted_count >= 10) {
+    std::exit(1);
+  }
 }
 
 void Error::exit(int code) { std::exit(code); }

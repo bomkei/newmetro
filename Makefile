@@ -25,7 +25,7 @@ LDFLAGS			=
 
 %.o: %.cc
 	@echo $(notdir $<)
-	$(CXX) $(CXXFLAGS) -MP -MMD -MF $*.d -c -o $@ $<
+	@$(CXX) $(CXXFLAGS) -MP -MMD -MF $*.d -c -o $@ $<
 
 ifneq ($(notdir $(CURDIR)),$(BUILD))
 
@@ -64,7 +64,7 @@ DEPENDS	= $(OFILES:.o=.d)
 
 $(OUTPUT): $(OFILES)
 	@echo linking...
-	$(LD) $(LDFLAGS) -pthread -o $@ $^
+	@$(LD) $(LDFLAGS) -pthread -o $@ $^
 
 -include $(DEPENDS)
 
