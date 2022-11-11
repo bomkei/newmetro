@@ -7,6 +7,33 @@ std::string ObjImmediate<bool, TYPE_Bool>::to_string() const
   return this->value ? "true" : "false";
 }
 
+template <TypeKind k, char begin, char end>
+ObjList<k, begin, end>::ObjList()
+    : Object(k)
+{
+}
+
+template <TypeKind k, char begin, char end>
+std::string ObjList<k, begin, end>::to_string() const
+{
+  return begin +
+         Utils::join<Object*>(", ", this->elements,
+                              [](auto x) { return x->to_string(); }) +
+         end;
+}
+
+template <TypeKind k, char begin, char end>
+ObjList<k, begin, end>* ObjList<k, begin, end>::clone() const
+{
+  auto x = new ObjList<k, begin, end>;
+
+  for (auto&& elem : this->elements) {
+    x->elements.emplace_back(elem->clone());
+  }
+
+  return x;
+}
+
 Object::Object(Type const& type)
     : type(type),
       ref_count(0)
@@ -130,3 +157,6 @@ ObjFunction* ObjFunction::from_builtin(BuiltinFunc const& b)
 
   return x;
 }
+
+template struct ObjList<TYPE_Tuple, '(', ')'>;
+template struct ObjList<TYPE_Vector, '[', ']'>;

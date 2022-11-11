@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include "types/Object.h"
 #include "types/Node.h"
 #include "types/Token.h"
@@ -29,11 +31,32 @@ Object*& Evaluator::eval_lvalue(Node* node)
   Error(ERR_TypeMismatch, node).emit().exit();
 }
 
+Object* Evaluator::eval_scope(Scope& scope, Node* node)
+{
+  Object* ret{};
+
+  scope.is_skipped = false;
+
+  for (auto&& x : node->list) {
+    alert;
+
+    ret = this->eval(x);
+
+    if (scope.is_skipped) {
+      break;
+    }
+  }
+
+  return ret ? ret : gcnew<ObjNone>();
+}
+
 Object* Evaluator::eval(Node* node)
 {
   if (!node) {
     goto __none;
   }
+
+  alertfmt("eval(): node = %p, kind=%d", node, node->kind);
 
   switch (node->kind) {
     case ND_None:
@@ -153,33 +176,73 @@ Object* Evaluator::eval(Node* node)
     }
 
     case ND_For: {
-      auto& iterator = this->eval_lvalue(node->nd_for_iterator);
-
       auto& scope = this->enter_scope(node);
 
-      auto range = this->eval(node->nd_for_range);
+      auto& loopContext = this->loop_stack.emplace_front(node, scope);
 
-      if (!range->type.equals(TYPE_Range)) {
-        Error(ERR_TypeMismatch, node->nd_for_range)
-            .suggest(node->nd_for_range,
-                     "expected `range` type expression")
-            .emit()
-            .exit();
+      auto objTarget = this->eval(node->nd_for_range);
+
+      switch (objTarget->type.kind) {
+        case TYPE_Range: {
+          auto objRange = (ObjRange*)objTarget;
+
+          ObjLong counter{objRange->begin};
+
+          if (node->nd_for_iterator->kind == ND_Variable) {
+            scope.variables.emplace_back(
+                &counter,
+                node->nd_for_iterator->nd_variable_name->str);
+          }
+
+          for (auto begin = objRange->begin;
+               !loopContext.is_breaked && begin < objRange->end;
+               begin++, counter.value++) {
+            this->eval_scope(scope, node->nd_for_loop_code);
+          }
+
+          break;
+        }
+
+        default:
+          TODO_IMPL
       }
 
-      Object* result{};
+      auto result = loopContext.result;
 
-      while (!scope.is_skipped) {
-        this->eval(node->nd_for_loop_code);
-      }
+      this->loop_stack.pop_front();
 
       this->leave_scope();
+
+      if (!result) {
+        goto __none;
+      }
 
       return result;
     }
 
     case ND_Return: {
       auto& scope = this->get_cur_scope();
+
+      TODO_IMPL
+
+      break;
+    }
+
+    case ND_Break:
+    case ND_Continue: {
+      auto& loopContext = this->get_cur_loop_context();
+
+      loopContext.scope.is_skipped = true;
+
+      if (node->kind == ND_Break) {
+        loopContext.is_breaked = true;
+
+        if (node->nd_break_expr) {
+          loopContext.result = this->eval(node->nd_break_expr);
+        }
+      }
+
+      goto __none;
     }
 
     case ND_Let: {
@@ -191,6 +254,8 @@ Object* Evaluator::eval(Node* node)
         pvar = &scope.variables.emplace_back(nullptr,
                                              node->nd_let_name->str);
       }
+
+      assert(pvar);
 
       if (node->nd_let_init) {
         pvar->value = this->eval(node->nd_let_init);
@@ -204,17 +269,7 @@ Object* Evaluator::eval(Node* node)
         goto __none;
       }
 
-      auto& scope = this->enter_scope(node);
-      Object* ret{};
-
-      for (auto&& x : node->list) {
-        ret = this->eval(x);
-
-        if (scope.is_skipped) {
-          ret = scope.lastval;
-          break;
-        }
-      }
+      Object* ret = this->eval_scope(this->enter_scope(node), node);
 
       this->leave_scope();
 

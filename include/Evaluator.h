@@ -24,8 +24,6 @@ class Evaluator {
     bool is_skipped;
     Object* lastval;
 
-    bool is_loop_continued{};
-
     size_t cur_index;
 
     explicit Scope(Node* node)
@@ -56,15 +54,13 @@ class Evaluator {
 
   struct LoopContext {
     Node* node;
-    Scope* scope;
+    Object* result;
 
-    Object** pObj_iterator;
-    Object** pObj_range;
+    bool is_breaked;
 
-    static LoopContext from_For(Node* nd_for);
+    Scope& scope;
 
-   private:
-    LoopContext();
+    LoopContext(Node* node, Scope& scope);
   };
 
  public:
@@ -78,6 +74,8 @@ class Evaluator {
   Object* compute_expr(Node* node, Object* lhs, Object* rhs);
   Object*& compute_subscript(Node* node, Object* lhs, Object* index);
   Object*& compute_member_variable();
+
+  Object* eval_scope(Scope& scope, Node* node);
 
  private:
   //

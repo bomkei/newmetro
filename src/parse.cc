@@ -89,6 +89,7 @@ Node* Parser::atom()
     case TOK_Ident: {
       auto node = new Node(ND_Variable, this->cur);
 
+      node->nd_variable_name = this->cur;
       this->next();
 
       return node;
@@ -206,6 +207,9 @@ Node* Parser::statement()
     auto node = new Node(ND_For, this->ate);
 
     node->nd_for_iterator = this->expr();
+
+    this->expect("in");
+
     node->nd_for_range = this->expr();
 
     node->nd_for_loop_code = this->expect_scope();
@@ -222,6 +226,29 @@ Node* Parser::statement()
       node->nd_return_expr = this->expr();
       this->expect_semi();
     }
+
+    return node;
+  }
+
+  //
+  // break
+  if (this->eat("break")) {
+    auto node = new Node(ND_Break, this->ate);
+
+    if (!this->eat(";")) {
+      node->nd_break_expr = this->expr();
+      this->expect_semi();
+    }
+
+    return node;
+  }
+
+  //
+  // continue
+  if (this->eat("continue")) {
+    auto node = new Node(ND_Continue, this->ate);
+
+    this->expect_semi();
 
     return node;
   }

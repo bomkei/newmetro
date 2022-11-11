@@ -26,6 +26,7 @@
 #define nd_for_loop_code uni_nd[2]
 
 #define nd_return_expr uni_nd[0]
+#define nd_break_expr uni_nd[0]
 
 #define nd_let_name uni_token
 #define nd_let_type uni_nd[1]
@@ -84,6 +85,8 @@ enum NodeKind {
   // ND_Loop,
   ND_While,
   ND_Return,
+  ND_Break,
+  ND_Continue,
 
   ND_Let,
 

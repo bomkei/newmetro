@@ -5,6 +5,21 @@
 #include "Utils.h"
 #include "Evaluator.h"
 
+Evaluator::CallStack::CallStack(Node* func)
+    : func(func),
+      is_returned(false),
+      result(nullptr)
+{
+}
+
+Evaluator::LoopContext::LoopContext(Node* node, Scope& scope)
+    : node(node),
+      result(nullptr),
+      is_breaked(false),
+      scope(scope)
+{
+}
+
 void Evaluator::adjust_object_type(Object*& lhs, Object*& rhs)
 {
   if (lhs->type.kind > rhs->type.kind) {
@@ -31,22 +46,6 @@ Object*& Evaluator::get_var(Token* name)
   Error(ERR_UndefinedVariable, name).emit().exit();
 }
 
-Evaluator::CallStack::CallStack(Node* func)
-    : func(func),
-      is_returned(false),
-      result(nullptr)
-{
-}
-
-Evaluator::LoopContext Evaluator::LoopContext::from_For(Node* nd_for)
-{
-  LoopContext ctx;
-
-  ctx.node = nd_for;
-
-  return ctx;
-}
-
 Evaluator::Scope& Evaluator::enter_scope(Node* node)
 {
   return this->scope_stack.emplace_front(node);
@@ -57,12 +56,16 @@ void Evaluator::leave_scope()
   this->scope_stack.pop_front();
 }
 
+Evaluator::LoopContext& Evaluator::get_cur_loop_context()
+{
+  return *this->loop_stack.begin();
+}
+
 void Evaluator::loop_continue()
 {
   auto& scope = this->get_cur_scope();
 
   scope.is_skipped = true;
-  scope.is_loop_continued = true;
 }
 
 void Evaluator::loop_break()
