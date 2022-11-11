@@ -10,7 +10,8 @@ TOPDIR	?= $(CURDIR)
 BUILD		= build
 INCLUDE	= include
 SOURCES	= src \
-	src/evaluator
+	src/evaluator \
+	src/types
 
 OPTFLAGS		= -O0 -g
 WARNFLAGS		= -Wall -Wextra -Wno-switch

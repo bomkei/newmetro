@@ -1,4 +1,9 @@
-#include "metro.h"
+#include "types/Object.h"
+#include "types/Node.h"
+#include "types/Token.h"
+#include "Error.h"
+#include "Utils.h"
+#include "Evaluator.h"
 
 void Evaluator::adjust_object_type(Object*& lhs, Object*& rhs)
 {

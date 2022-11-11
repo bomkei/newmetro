@@ -1,9 +1,15 @@
 #include <fstream>
-#include "metro.h"
+#include <tuple>
+#include "types/Source.h"
 
-Source::Source() {}
+Source::Source()
+{
+}
 
-Source::Source(char const* path) { this->readfile(path); }
+Source::Source(char const* path)
+{
+  this->readfile(path);
+}
 
 bool Source::readfile(char const* path)
 {

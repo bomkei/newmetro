@@ -1,10 +1,10 @@
 #pragma once
 
+#include <list>
+
 #include "types/Token.h"
 #include "types/Object.h"
 
-//
-// 構文木を評価 ( 実行 )
 class Evaluator {
   struct Variable {
     Object* value;
@@ -122,3 +122,28 @@ class Evaluator {
 
   std::list<LoopContext> loop_stack;
 };
+
+template <std::derived_from<Object> T, class... Args>
+T* gcnew(Args&&... args)
+{
+  T* obj;
+
+  if constexpr (sizeof...(args) != 0) {
+    obj = new T(args...);
+  }
+  else {
+    obj = new T;
+  }
+
+  // todo: append to gc
+
+  return obj;
+}
+
+template <std::derived_from<Object> T>
+static inline T* gcvia(T* obj)
+{
+  // todo: append to gc
+
+  return obj;
+}

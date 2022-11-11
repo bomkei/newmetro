@@ -1,4 +1,11 @@
-#include "metro.h"
+#include <iostream>
+
+#include "types/Object.h"
+#include "types/Node.h"
+#include "types/Token.h"
+#include "types/BuiltinFunc.h"
+#include "Error.h"
+#include "Utils.h"
 
 #define blambda(e) [](Node * node, BF_Args const& args) -> Object* e
 
@@ -71,8 +78,9 @@ class BuiltinBuilder {
     return this->_actual_func(node, actual_args);
   }
 
-  BuiltinFunc::FuncType wrapper;
   std::vector<Type> arg_types;
+
+  BuiltinFunc::FuncType wrapper;
 
   BuiltinFunc::FuncType _actual_func;
 };
@@ -104,10 +112,6 @@ Object* bf_print(Node* node, BF_Args const& args)
 // format
 Object* bf_format(Node* node, BF_Args const& args)
 {
-  // if (args.empty() || !args[0]->type.equals(TYPE_String)) {
-  //   Error(ERR_IllegalFunctionCall, node).emit().exit();
-  // }
-
   auto it = args.begin() + 1;
   auto fmt = (ObjString*)args[0];
 
@@ -167,26 +171,27 @@ std::vector<BuiltinFunc> const BuiltinFunc::builtin_functions = {
                            bf_format),
 
     // print
-    {"print", bf_print},
-
-    // printf
-    {"printf", blambda({
-       auto s = (ObjString*)bf_format(node, args);
-
-       std::cout << s->to_string();
-
-       auto ret = new ObjLong(s->value.length());
-
-       return ret;
-     })},
+    BuiltinBuilder::create("print", {TYPE_Args}, bf_print),
 
     // println
-    {"println", blambda({
-       auto ret = bf_print(node, args);
+    BuiltinBuilder::create("println", {TYPE_Args}, blambda({
+                             auto ret = bf_print(node, args);
 
-       std::cout << std::endl;
+                             std::cout << std::endl;
 
-       ((ObjLong*)ret)->value++;
-       return ret;
-     })},
+                             ((ObjLong*)ret)->value++;
+                             return ret;
+                           })),
+
+    // printf
+    BuiltinBuilder::create(
+        "printf", {TYPE_String, TYPE_Args}, blambda({
+          auto s = (ObjString*)bf_format(node, args);
+
+          std::cout << s->to_string();
+
+          auto ret = new ObjLong(s->value.length());
+
+          return ret;
+        })),
 };

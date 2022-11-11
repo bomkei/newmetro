@@ -1,4 +1,13 @@
-#include "metro.h"
+#include <iostream>
+#include <sstream>
+
+#include "types/Token.h"
+#include "types/Node.h"
+
+#include "Utils.h"
+#include "Driver.h"
+
+#include "Error.h"
 
 #define COL_ERROR "\033[37;1;4m"
 
@@ -178,6 +187,25 @@ std::vector<std::string> Error::ErrLocation::trim_source() const
   return vec;
 }
 
+std::string Error::ErrLocation::to_string() const
+{
+  return Utils::format(
+      "{ErrLocation %p: type=%d, begin=%zu, end=%zu}", this,
+      static_cast<int>(this->type), this->begin, this->end);
+}
+
+bool Error::ErrLocation::equals(ErrLocation const& loc) const
+{
+  return this->type == loc.type && this->begin == loc.begin &&
+         this->end == loc.end;
+}
+
+Error::Suggestion::Suggestion(ErrLocation loc, std::string&& msg)
+    : loc(loc),
+      msg(std::move(msg))
+{
+}
+
 Error::Error(ErrorKind kind, Error::ErrLocation loc)
     : kind(kind),
       loc(loc),
@@ -262,6 +290,15 @@ std::string Error::create_showing_text(ErrLocation const& loc,
   return ss.str();
 }
 
+std::vector<Error::Suggestion*>* Error::_find_suggest(
+    ErrLocation const& loc)
+{
+  for (auto&& [l, sv] : this->suggest_map)
+    if (l.equals(loc)) return &sv;
+
+  return nullptr;
+}
+
 Error& Error::emit()
 {
   auto const col = this->is_warn ? COL_YELLOW : COL_RED;
@@ -296,4 +333,7 @@ void Error::check()
   }
 }
 
-void Error::exit(int code) { std::exit(code); }
+void Error::exit(int code)
+{
+  std::exit(code);
+}
