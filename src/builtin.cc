@@ -170,6 +170,8 @@ std::vector<BuiltinFunc> const BuiltinFunc::builtin_functions = {
     BuiltinBuilder::create("format", {TYPE_String, TYPE_Args},
                            bf_format),
 
+    //
+
     // print
     BuiltinBuilder::create("print", {TYPE_Args}, bf_print),
 

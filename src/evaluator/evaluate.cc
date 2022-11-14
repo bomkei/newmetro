@@ -38,8 +38,6 @@ Object* Evaluator::eval_scope(Scope& scope, Node* node)
   scope.is_skipped = false;
 
   for (auto&& x : node->list) {
-    alert;
-
     ret = this->eval(x);
 
     if (scope.is_skipped) {
@@ -55,8 +53,6 @@ Object* Evaluator::eval(Node* node)
   if (!node) {
     goto __none;
   }
-
-  alertfmt("eval(): node = %p, kind=%d", node, node->kind);
 
   switch (node->kind) {
     case ND_None:

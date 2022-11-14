@@ -119,7 +119,7 @@ ObjRange::ObjRange(ValueType begin, ValueType end)
 
 std::string ObjRange::to_string() const
 {
-  return Utils::format("range(%lu, %lu)", this->begin, this->end);
+  return Utils::format("%lu..%lu", this->begin, this->end);
 }
 
 ObjRange* ObjRange::clone() const
