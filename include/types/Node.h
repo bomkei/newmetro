@@ -95,6 +95,8 @@ enum NodeKind {
   ND_Function,
 
   ND_Struct,
+
+  ND_Namespace,
 };
 
 struct Node {

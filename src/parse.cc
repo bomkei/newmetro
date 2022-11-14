@@ -547,6 +547,12 @@ Node* Parser::expr()
   return this->assign();
 }
 
+Node* Parser::p_namespace()
+{
+  if (this->eat("namespace")) {
+  }
+}
+
 Node* Parser::parse()
 {
   auto node = new Node(ND_Scope);
@@ -570,7 +576,6 @@ Node* Parser::parse()
       break;
     }
 
-    alert;
     Error(ERR_UnexpectedToken, this->cur->prev)
         .suggest(this->cur->prev,
                  "expected semicolon after this token")
@@ -633,7 +638,7 @@ Node* Parser::expect_type()
   return node;
 }
 
-Node* Parser::expect_scope()
+Node* Parser::expect_scope(std::function<Node*(Parser*)> chi)
 {
   auto node = new Node(ND_Scope, this->cur);
 
@@ -645,7 +650,7 @@ Node* Parser::expect_scope()
   }
 
   while (this->check()) {
-    auto& item = node->list.emplace_back(this->expr());
+    auto& item = node->list.emplace_back(chi(this));
 
     if (this->eat(";") || this->cur->prev->str == ";") {
       if (this->eat("}")) {
