@@ -2,6 +2,7 @@
 #include <functional>
 #include "types/Object.h"
 #include "GC.h"
+#include "Utils.h"
 
 #define MTX_LOCK                \
   std::lock_guard<std::mutex> M \
@@ -12,6 +13,7 @@
 static std::list<MetroGC*> _g_mgc_inst_list;
 
 MetroGC::MetroGC()
+    : _is_running(false)
 {
   _g_mgc_inst_list.push_front(this);
 }
@@ -55,6 +57,7 @@ void MetroGC::remove(Object* object)
   for (auto&& p : this->_objects) {
     if (p == object) {
       p = nullptr;
+      break;
     }
   }
 }
@@ -67,6 +70,7 @@ void MetroGC::clean()
     if (pObj && pObj->ref_count == 0) {
       delete pObj;
       pObj = nullptr;
+      break;
     }
   }
 }

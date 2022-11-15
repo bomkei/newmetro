@@ -2,6 +2,33 @@
 #include "Utils.h"
 #include "GC.h"
 
+Object::Object(Type const& type)
+    : type(type),
+      ref_count(0)
+{
+  MetroGC::get_instance()->append(this);
+}
+
+Object::~Object()
+{
+  // MetroGC::get_instance()->remove(this);
+}
+
+ObjNone::ObjNone()
+    : Object(TYPE_None)
+{
+}
+
+std::string ObjNone::to_string() const
+{
+  return "none";
+}
+
+ObjNone* ObjNone::clone() const
+{
+  return new ObjNone;
+}
+
 template <>
 std::string ObjImmediate<bool, TYPE_Bool>::to_string() const
 {
@@ -39,33 +66,6 @@ ObjList<k, begin, end>* ObjList<k, begin, end>::clone() const
   }
 
   return x;
-}
-
-Object::Object(Type const& type)
-    : type(type),
-      ref_count(0)
-{
-  MetroGC::get_instance()->append(this);
-}
-
-Object::~Object()
-{
-  MetroGC::get_instance()->remove(this);
-}
-
-ObjNone::ObjNone()
-    : Object(TYPE_None)
-{
-}
-
-std::string ObjNone::to_string() const
-{
-  return "none";
-}
-
-ObjNone* ObjNone::clone() const
-{
-  return new ObjNone;
 }
 
 ObjString::ObjString(std::wstring&& val)

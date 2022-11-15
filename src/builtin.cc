@@ -171,8 +171,8 @@ std::vector<BuiltinFunc> const BuiltinFunc::builtin_functions = {
                            bf_format),
 
     //
-    // ---- converters -----
-    BuiltinBuilder::create("to_vector", {TYPE_Range}, blambda({
+    // ---- constructors with type -----
+    BuiltinBuilder::create("vector", {TYPE_Range}, blambda({
                              auto ret = new ObjVector();
 
                              auto R = (ObjRange*)args[0];
