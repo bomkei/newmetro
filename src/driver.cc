@@ -2,6 +2,7 @@
 #include "Parser.h"
 #include "Evaluator.h"
 #include "Driver.h"
+#include "GC.h"
 
 static Driver* __inst;
 
@@ -12,6 +13,8 @@ Driver::Driver()
 
 Object* Driver::execute_script()
 {
+  MetroGC gc;
+
   Lexer lexer{this->source};
 
   auto token = lexer.lex();
@@ -20,7 +23,7 @@ Object* Driver::execute_script()
 
   auto node = parser.parse();
 
-  Evaluator eval;
+  Evaluator eval{gc};
 
   auto obj = eval.eval(node);
 

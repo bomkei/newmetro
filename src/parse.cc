@@ -631,9 +631,10 @@ Node* Parser::expect_type()
 {
   auto node = new Node(ND_Type, this->expect_ident(true));
 
-  // todo: < ... >
-  // todo: check mutable
-  // todo: check reference
+  // todo: parse template parameters < ... >
+
+  // todo: parse mutable
+  // todo: parase reference
 
   return node;
 }

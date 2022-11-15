@@ -1,5 +1,6 @@
 #include "types/Object.h"
 #include "Utils.h"
+#include "GC.h"
 
 template <>
 std::string ObjImmediate<bool, TYPE_Bool>::to_string() const
@@ -11,6 +12,12 @@ template <TypeKind k, char begin, char end>
 ObjList<k, begin, end>::ObjList()
     : Object(k)
 {
+}
+
+template <TypeKind k, char begin, char end>
+Object*& ObjList<k, begin, end>::append(Object* obj)
+{
+  return this->elements.emplace_back(obj);
 }
 
 template <TypeKind k, char begin, char end>
@@ -38,6 +45,12 @@ Object::Object(Type const& type)
     : type(type),
       ref_count(0)
 {
+  MetroGC::get_instance()->append(this);
+}
+
+Object::~Object()
+{
+  MetroGC::get_instance()->remove(this);
 }
 
 ObjNone::ObjNone()
