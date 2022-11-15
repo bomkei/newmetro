@@ -53,6 +53,12 @@ Evaluator::Scope& Evaluator::enter_scope(Node* node)
 
 void Evaluator::leave_scope()
 {
+  auto& scope = this->get_cur_scope();
+
+  for (auto&& v : scope.variables) {
+    v.value->ref_count--;
+  }
+
   this->scope_stack.pop_front();
 }
 

@@ -4,14 +4,15 @@
 
 Object::Object(Type const& type)
     : type(type),
-      ref_count(0)
+      ref_count(1)
 {
+  alert;
   MetroGC::get_instance()->append(this);
 }
 
 Object::~Object()
 {
-  // MetroGC::get_instance()->remove(this);
+  alert;
 }
 
 ObjNone::ObjNone()
@@ -52,7 +53,12 @@ std::string ObjList<k, begin, end>::to_string() const
 {
   return begin +
          Utils::join<Object*>(", ", this->elements,
-                              [](auto x) { return x->to_string(); }) +
+                              [](auto x) {
+                                if (x->type.equals(TYPE_String))
+                                  return "\"" + x->to_string() + "\"";
+                                else
+                                  return x->to_string();
+                              }) +
          end;
 }
 
