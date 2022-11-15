@@ -15,6 +15,8 @@ struct Object {
   virtual std::string to_string() const = 0;
   virtual Object* clone() const = 0;
 
+  virtual ~Object();
+
  protected:
   Object(Type const& type);
 };
@@ -57,6 +59,8 @@ struct ObjList : Object {
   std::vector<Object*> elements;
 
   ObjList();
+
+  Object*& append(Object*);
 
   std::string to_string() const override;
   ObjList* clone() const override;

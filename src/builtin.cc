@@ -170,6 +170,21 @@ std::vector<BuiltinFunc> const BuiltinFunc::builtin_functions = {
     BuiltinBuilder::create("format", {TYPE_String, TYPE_Args},
                            bf_format),
 
+    //
+    // ---- converters -----
+    BuiltinBuilder::create("to_vector", {TYPE_Range}, blambda({
+                             auto ret = new ObjVector();
+
+                             auto R = (ObjRange*)args[0];
+
+                             for (int64_t i = R->begin; i < R->end;
+                                  i++) {
+                               ret->append(new ObjLong(i));
+                             }
+
+                             return ret;
+                           })),
+
     // print
     BuiltinBuilder::create("print", {TYPE_Args}, bf_print),
 

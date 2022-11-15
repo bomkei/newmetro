@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <functional>
 #include "types/Node.h"
 
 struct Token;
@@ -43,6 +44,8 @@ class Parser {
 
   Node* expr();
 
+  Node* p_namespace();
+
   Node* parse();
 
  private:
@@ -61,7 +64,8 @@ class Parser {
   // 型を期待
   Node* expect_type();
 
-  Node* expect_scope();
+  Node* expect_scope(
+      std::function<Node*(Parser*)> chi = &Parser::expr);
 
   bool eat_semi();
   void expect_semi();

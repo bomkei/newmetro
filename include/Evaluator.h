@@ -5,6 +5,7 @@
 #include "types/Token.h"
 #include "types/Object.h"
 
+class MetroGC;
 class Evaluator {
   struct Variable {
     Object* value;
@@ -64,9 +65,8 @@ class Evaluator {
   };
 
  public:
-  Evaluator()
-  {
-  }
+  Evaluator(MetroGC&);
+  ~Evaluator();
 
   Object* eval(Node* node);
   Object*& eval_lvalue(Node* node);
@@ -119,29 +119,6 @@ class Evaluator {
   std::list<Node*> call_stack;
 
   std::list<LoopContext> loop_stack;
+
+  MetroGC& _gc;
 };
-
-template <std::derived_from<Object> T, class... Args>
-T* gcnew(Args&&... args)
-{
-  T* obj;
-
-  if constexpr (sizeof...(args) != 0) {
-    obj = new T(args...);
-  }
-  else {
-    obj = new T;
-  }
-
-  // todo: append to gc
-
-  return obj;
-}
-
-template <std::derived_from<Object> T>
-static inline T* gcvia(T* obj)
-{
-  // todo: append to gc
-
-  return obj;
-}

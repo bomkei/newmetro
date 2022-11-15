@@ -7,6 +7,18 @@
 #include "Error.h"
 #include "Utils.h"
 #include "Evaluator.h"
+#include "GC.h"
+
+Evaluator::Evaluator(MetroGC& gc)
+    : _gc(gc)
+{
+  _gc.execute();
+}
+
+Evaluator::~Evaluator()
+{
+  _gc.stop();
+}
 
 Object*& Evaluator::eval_lvalue(Node* node)
 {
@@ -38,8 +50,6 @@ Object* Evaluator::eval_scope(Scope& scope, Node* node)
   scope.is_skipped = false;
 
   for (auto&& x : node->list) {
-    alert;
-
     ret = this->eval(x);
 
     if (scope.is_skipped) {
@@ -47,7 +57,7 @@ Object* Evaluator::eval_scope(Scope& scope, Node* node)
     }
   }
 
-  return ret ? ret : gcnew<ObjNone>();
+  return ret ? ret : new ObjNone;
 }
 
 Object* Evaluator::eval(Node* node)
@@ -56,28 +66,26 @@ Object* Evaluator::eval(Node* node)
     goto __none;
   }
 
-  alertfmt("eval(): node = %p, kind=%d", node, node->kind);
-
   switch (node->kind) {
     case ND_None:
     case ND_Struct:
     __none:
-      return gcnew<ObjNone>();
+      return new ObjNone;
 
     case ND_Value:
       return node->nd_value;
 
     case ND_True:
-      return gcnew<ObjBool>(true);
+      return new ObjBool(true);
 
     case ND_False:
-      return gcnew<ObjBool>(false);
+      return new ObjBool(false);
 
     case ND_EmptyList:
-      return gcnew<ObjVector>();
+      return new ObjVector();
 
     case ND_List: {
-      auto ret = gcnew<ObjVector>();
+      auto ret = new ObjVector();
 
       for (auto&& x : node->list) {
         ret->elements.emplace_back(this->eval(x));
@@ -87,7 +95,7 @@ Object* Evaluator::eval(Node* node)
     }
 
     case ND_Function: {
-      return gcnew<ObjFunction>(node);
+      return new ObjFunction(node);
     }
 
     case ND_SelfFunc: {
@@ -95,13 +103,13 @@ Object* Evaluator::eval(Node* node)
         Error(ERR_HereIsNotInsideOfFunc, node).emit().exit();
       }
 
-      return gcnew<ObjFunction>(*this->call_stack.begin());
+      return new ObjFunction(*this->call_stack.begin());
     }
 
     case ND_Variable: {
       for (auto&& bfun : BuiltinFunc::builtin_functions) {
         if (bfun.name == node->token->str) {
-          return gcvia<ObjFunction>(ObjFunction::from_builtin(bfun));
+          return ObjFunction::from_builtin(bfun);
         }
       }
 
@@ -292,8 +300,8 @@ Object* Evaluator::eval(Node* node)
             .emit()
             .exit();
 
-      return gcnew<ObjRange>(((ObjLong*)begin)->value,
-                             ((ObjLong*)end)->value);
+      return new ObjRange(((ObjLong*)begin)->value,
+                          ((ObjLong*)end)->value);
     }
 
     case ND_Bigger:
@@ -370,13 +378,13 @@ Object* Evaluator::eval(Node* node)
         }
 
         if (!result) {
-          return gcnew<ObjBool>(false);
+          return new ObjBool(false);
         }
 
         lhs = rhs;
       }
 
-      return gcnew<ObjBool>(true);
+      return new ObjBool(true);
     }
 
     case ND_Assign: {
