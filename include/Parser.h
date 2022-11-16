@@ -44,8 +44,6 @@ class Parser {
 
   Node* expr();
 
-  Node* p_namespace();
-
   Node* parse();
 
  private:

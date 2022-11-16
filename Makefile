@@ -10,7 +10,8 @@ TOPDIR	?= $(CURDIR)
 BUILD		= build
 INCLUDE	= include
 SOURCES	= src \
-	src/evaluator \
+	src/Evaluator \
+	src/Parser \
 	src/types
 
 OPTFLAGS		= -O0 -g

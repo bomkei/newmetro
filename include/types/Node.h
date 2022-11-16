@@ -38,6 +38,7 @@ enum NodeKind {
 
   ND_Type,
   ND_Argument,
+  ND_VariableArguments,
 
   ND_True,
   ND_False,

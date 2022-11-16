@@ -2,8 +2,8 @@
 #include "types/Type.h"
 
 static char const* typename_list[]{
-    "none",  "int", "float", "bool", "char", "string",
-    "tuple", "vec", "range", "args", "func",
+    "none",  "int", "float", "bool",    "char", "string",
+    "tuple", "vec", "range", "arglist", "func",
 };
 
 std::string Type::to_string() const

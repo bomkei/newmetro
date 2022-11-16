@@ -159,6 +159,8 @@ Object* Evaluator::eval(Node* node)
             this->eval(arg), (*formal++)->nd_arg_name->str);
       }
 
+      // check arguments
+
       auto result = this->eval(functor->func->nd_func_code);
 
       this->leave_scope();
@@ -193,8 +195,8 @@ Object* Evaluator::eval(Node* node)
       auto objTarget = this->eval(node->nd_for_range);
 
       Object** p_iter_obj{};
+      Token* ndvar_name{};
       bool do_define_itr = node->nd_for_iterator->kind == ND_Variable;
-      Token* ndvar_name;
 
       if (node->nd_for_iterator->kind == ND_Variable) {
         scope.variables.emplace_back(nullptr, ndvar_name->str);
