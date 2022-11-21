@@ -197,7 +197,9 @@ Object*& Evaluator::compute_subscript(Node* node, Object* lhs,
 {
   if (!lhs->type.equals(TYPE_Vector)) {
     Error(ERR_TypeMismatch, node->nd_lhs)
-        .suggest(node->nd_lhs, "expected vector")
+        .suggest(node->nd_lhs,
+                 "expected `vector` or `tuple`, but found `" +
+                     lhs->type.to_string() + "`")
         .emit()
         .exit();
   }

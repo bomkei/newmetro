@@ -171,19 +171,45 @@ std::vector<BuiltinFunc> const BuiltinFunc::builtin_functions = {
                            bf_format),
 
     //
-    // ---- converters -----
-    BuiltinBuilder::create("to_vector", {TYPE_Range}, blambda({
-                             auto ret = new ObjVector();
+    // ---- type constructors -----
+    {"vector", blambda({
+       auto ret = new ObjVector();
 
-                             auto R = (ObjRange*)args[0];
+       if (args.size() == 1) {
+         switch (args[0]->type.kind) {
+           case TYPE_Int:
+             for (int64_t i = 0; i < ((ObjLong*)args[0])->value;
+                  i++) {
+               ret->append(new ObjLong(i));
+             }
 
-                             for (int64_t i = R->begin; i < R->end;
-                                  i++) {
-                               ret->append(new ObjLong(i));
-                             }
+             break;
 
-                             return ret;
-                           })),
+           case TYPE_Range: {
+             auto R = (ObjRange*)args[0];
+
+             for (int64_t i = R->begin; i < R->end; i++) {
+               ret->append(new ObjLong(i));
+             }
+
+             break;
+           }
+         }
+       }
+
+       // (any), int
+       //  --> item, count
+       else if (args.size() == 2 && args[1]->type.equals(TYPE_Int)) {
+         for (int64_t i = 0; i < ((ObjLong*)args[1])->value; i++) {
+           ret->append(args[0]);
+         }
+       }
+       else {
+         Error(ERR_IllegalFunctionCall, node).emit().exit();
+       }
+
+       return ret;
+     })},
 
     // print
     BuiltinBuilder::create("print", {TYPE_Args}, bf_print),

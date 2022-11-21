@@ -14,6 +14,9 @@ static char const punctuators[] =
     "!?";
 
 static char const* long_punctuators[]{
+    // argument pack
+    "...",
+
     // spaceship
     "<=>",
 
@@ -69,15 +72,15 @@ static std::string_view const keywords[]{
     "char",
     "string",
     "tuple",
-    "vec",
-    "func",
+    "vector",
+    "funcion",
 
     // control expr
     "if",
     "else",
-    "for",
     "switch",
     "match",
+    "for",
     "loop",
     "while",
     "do",

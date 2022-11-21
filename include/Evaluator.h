@@ -115,6 +115,10 @@ class Evaluator {
   void loop_continue();
   void loop_break();
 
+  //
+  // check arguments
+  void check_user_func_args(Node* node, Node* nd_func, Scope& scope);
+
   std::list<Scope> scope_stack;
   std::list<Node*> call_stack;
 

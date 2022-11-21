@@ -22,13 +22,26 @@ Evaluator::LoopContext::LoopContext(Node* node, Scope& scope)
 
 void Evaluator::adjust_object_type(Object*& lhs, Object*& rhs)
 {
-  if (lhs->type.kind > rhs->type.kind) {
-    std::swap(lhs, rhs);
-  }
+  // if (lhs->type.kind > rhs->type.kind) {
+  //   std::swap(lhs, rhs);
+  // }
 
+  //
+  // 左右の型が違う : lhs != rhs
   if (!lhs->type.equals(rhs->type)) {
+    //
+    // int, float
+    //  --> float, float
     if (lhs->type.kind == TYPE_Int && rhs->type.kind == TYPE_Float) {
       lhs = new ObjFloat((float)((ObjLong*)lhs)->value);
+    }
+
+    //
+    // float, int
+    //  --> float, float
+    else if (lhs->type.kind == TYPE_Float &&
+             rhs->type.kind == TYPE_Int) {
+      rhs = new ObjFloat((float)((ObjLong*)rhs)->value);
     }
   }
 }
@@ -53,6 +66,12 @@ Evaluator::Scope& Evaluator::enter_scope(Node* node)
 
 void Evaluator::leave_scope()
 {
+  auto& scope = this->get_cur_scope();
+
+  for (auto&& v : scope.variables) {
+    v.value->ref_count--;
+  }
+
   this->scope_stack.pop_front();
 }
 
@@ -78,4 +97,29 @@ void Evaluator::loop_break()
 Evaluator::Scope& Evaluator::get_cur_scope()
 {
   return *this->scope_stack.begin();
+}
+
+void Evaluator::check_user_func_args(Node* node, Node* nd_func,
+                                     Scope& scope)
+{
+  auto iter_formal = nd_func->list.begin();
+
+  auto iter_actual = scope.variables.begin();
+  auto iter_actual_nd = node->list.begin();
+
+  for (; iter_actual != scope.variables.end();
+       iter_actual++, iter_formal++, iter_actual_nd++) {
+    if ((*iter_formal)->kind == ND_VariableArguments) {
+      return;
+    }
+
+    if (iter_formal == nd_func->list.end()) {
+      Error(ERR_TooManyArguments, *iter_actual_nd).emit().exit();
+    }
+  }
+
+  if (iter_formal != nd_func->list.end() &&
+      (*iter_formal)->kind != ND_VariableArguments) {
+    Error(ERR_TooFewArguments, node).emit().exit();
+  }
 }

@@ -159,6 +159,8 @@ Object* Evaluator::eval(Node* node)
             this->eval(arg), (*formal++)->nd_arg_name->str);
       }
 
+      // check arguments
+
       auto result = this->eval(functor->func->nd_func_code);
 
       this->leave_scope();
@@ -183,6 +185,8 @@ Object* Evaluator::eval(Node* node)
                                                 : node->nd_if_false);
     }
 
+    //
+    // for - loop
     case ND_For: {
       auto& scope = this->enter_scope(node);
 
@@ -190,29 +194,63 @@ Object* Evaluator::eval(Node* node)
 
       auto objTarget = this->eval(node->nd_for_range);
 
+      Object** p_iter_obj{};
+      Token* ndvar_name{};
+      bool do_define_itr = node->nd_for_iterator->kind == ND_Variable;
+
+      if (node->nd_for_iterator->kind == ND_Variable) {
+        scope.variables.emplace_back(nullptr, ndvar_name->str);
+      }
+
+      p_iter_obj = &this->eval_lvalue(node->nd_for_iterator);
+
       switch (objTarget->type.kind) {
         case TYPE_Range: {
           auto objRange = (ObjRange*)objTarget;
 
-          ObjLong counter{objRange->begin};
+          auto& counter = (ObjLong**&)p_iter_obj;
 
-          if (node->nd_for_iterator->kind == ND_Variable) {
-            scope.variables.emplace_back(
-                &counter,
-                node->nd_for_iterator->nd_variable_name->str);
+          if (!(*counter)->type.equals(TYPE_Int)) {
+            (*p_iter_obj)->ref_count--;
+            *p_iter_obj = new ObjLong(objRange->begin);
           }
 
           for (auto begin = objRange->begin;
                !loopContext.is_breaked && begin < objRange->end;
-               begin++, counter.value++) {
+               begin++) {
+            (*counter)->value = begin;
+
             this->eval_scope(scope, node->nd_for_loop_code);
+
+            p_iter_obj = &this->eval_lvalue(node->nd_for_iterator);
+          }
+
+          break;
+        }
+
+        case TYPE_Vector: {
+          auto objVector = (ObjVector*)objTarget;
+
+          for (auto&& elem : objVector->elements) {
+            if (loopContext.is_breaked) break;
+
+            *p_iter_obj = elem;
+
+            this->eval_scope(scope, node->nd_for_loop_code);
+
+            p_iter_obj = &this->eval_lvalue(node->nd_for_iterator);
           }
 
           break;
         }
 
         default:
-          TODO_IMPL
+          Error(ERR_TypeMismatch, node->nd_for_range)
+              .suggest(node->nd_for_range,
+                       "`" + objTarget->type.to_string() +
+                           "` is not iterable")
+              .emit()
+              .exit();
       }
 
       auto result = loopContext.result;

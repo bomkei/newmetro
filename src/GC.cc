@@ -2,6 +2,7 @@
 #include <functional>
 #include "types/Object.h"
 #include "GC.h"
+#include "Utils.h"
 
 #define MTX_LOCK                \
   std::lock_guard<std::mutex> M \
@@ -12,6 +13,8 @@
 static std::list<MetroGC*> _g_mgc_inst_list;
 
 MetroGC::MetroGC()
+    : _is_running(false),
+      _is_pausing(false)
 {
   _g_mgc_inst_list.push_front(this);
 }
@@ -23,6 +26,7 @@ MetroGC::~MetroGC()
 
 void MetroGC::execute()
 {
+  MTX_LOCK;
   this->_is_running = true;
 
   this->_routine.reset(
@@ -31,8 +35,28 @@ void MetroGC::execute()
 
 void MetroGC::stop()
 {
+  MTX_LOCK;
   this->_is_running = false;
+
   this->_routine->join();
+
+  for (auto&& obj : this->_objects) {
+    if (obj) {
+      delete obj;
+    }
+  }
+}
+
+void MetroGC::pause()
+{
+  MTX_LOCK;
+  this->_is_pausing = true;
+}
+
+void MetroGC::resume()
+{
+  MTX_LOCK;
+  this->_is_pausing = false;
 }
 
 Object*& MetroGC::append(Object* object)
@@ -55,6 +79,7 @@ void MetroGC::remove(Object* object)
   for (auto&& p : this->_objects) {
     if (p == object) {
       p = nullptr;
+      break;
     }
   }
 }
@@ -67,6 +92,7 @@ void MetroGC::clean()
     if (pObj && pObj->ref_count == 0) {
       delete pObj;
       pObj = nullptr;
+      break;
     }
   }
 }
