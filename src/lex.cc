@@ -197,11 +197,13 @@ Token* Lexer::lex()
     cur->str = {str, len};
     cur->endpos = this->position;
 
+    /*
     if (cur->kind == TOK_Ident &&
         std::find(std::begin(keywords), std::end(keywords),
                   cur->str) != std::end(keywords)) {
       cur->kind = TOK_Keyword;
     }
+    */
 
     while (line_itr->second < this->position) {
       line_itr++;
