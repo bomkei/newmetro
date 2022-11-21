@@ -195,18 +195,24 @@ Object* Evaluator::eval(Node* node)
       auto objTarget = this->eval(node->nd_for_range);
 
       Object** p_iter_obj{};
-      Token* ndvar_name{};
+      // Token* ndvar_name{};
       bool do_define_itr = node->nd_for_iterator->kind == ND_Variable;
 
       if (node->nd_for_iterator->kind == ND_Variable) {
-        scope.variables.emplace_back(nullptr, ndvar_name->str);
-      }
+        auto& V = scope.variables.emplace_back(
+            nullptr, node->nd_for_iterator->nd_variable_name->str);
 
-      p_iter_obj = &this->eval_lvalue(node->nd_for_iterator);
+        p_iter_obj = &V.value;
+      }
+      else {
+        p_iter_obj = &this->eval_lvalue(node->nd_for_iterator);
+      }
 
       switch (objTarget->type.kind) {
         case TYPE_Range: {
           auto objRange = (ObjRange*)objTarget;
+
+          *p_iter_obj = new ObjLong(objRange->begin);
 
           auto& counter = (ObjLong**&)p_iter_obj;
 
