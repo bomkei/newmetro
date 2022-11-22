@@ -329,8 +329,8 @@ Object* Evaluator::eval(Node* node)
     }
 
     case ND_Range: {
-      auto begin = this->eval(node->nd_lhs);
-      auto end = this->eval(node->nd_rhs);
+      auto begin = (ObjLong*)this->eval(node->nd_lhs);
+      auto end = (ObjLong*)this->eval(node->nd_rhs);
 
       if (!begin->type.equals(TYPE_Int))
         Error(ERR_TypeMismatch, node->nd_lhs)
@@ -344,8 +344,14 @@ Object* Evaluator::eval(Node* node)
             .emit()
             .exit();
 
-      return new ObjRange(((ObjLong*)begin)->value,
-                          ((ObjLong*)end)->value);
+      if (begin->value >= end->value)
+        Error(ERR_InvalidRange, node)
+            .suggest(node->nd_rhs,
+                     "maximum value must bigger than minimum")
+            .emit()
+            .exit();
+
+      return new ObjRange(begin->value, end->value);
     }
 
     case ND_Bigger:

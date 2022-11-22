@@ -28,6 +28,8 @@ enum ErrorKind {
   ERR_TooFewArguments,
   ERR_TooManyArguments,
 
+  ERR_InvalidRange,
+
   ERR_SubscriptOutOfRange,
 };
 

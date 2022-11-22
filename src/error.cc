@@ -31,6 +31,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_TooFewArguments, "too few arguments"},
     {ERR_TooManyArguments, "too many arguments"},
     {ERR_SubscriptOutOfRange, "subscript out of range"},
+    {ERR_InvalidRange, "invalid range"},
 };
 
 static size_t err_emitted_count{};
