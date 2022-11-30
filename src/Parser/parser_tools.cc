@@ -70,12 +70,25 @@ Node* Parser::expect_scope(std::function<Node*(Parser*)> chi)
     return node;
   }
 
+  auto new_return = [&](Node* x) -> Node* {
+    if (x->kind != ND_Return) {
+      auto y = new Node(ND_Return, x->token);
+
+      y->nd_return_expr = x;
+      x = y;
+    }
+
+    return x;
+  };
+
   while (this->check()) {
     auto& item = node->list.emplace_back(chi(this));
 
     if (this->eat(";") || this->cur->prev->str == ";") {
       if (this->eat("}")) {
-        node->list.emplace_back(new Node(ND_None));
+        node->list.emplace_back(
+            new_return(new Node(ND_None, this->ate)));
+
         return node;
       }
 
@@ -83,6 +96,8 @@ Node* Parser::expect_scope(std::function<Node*(Parser*)> chi)
     }
 
     if (this->eat("}")) {
+      item = new_return(item);
+
       return node;
     }
 

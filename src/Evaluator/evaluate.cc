@@ -52,9 +52,12 @@ Object* Evaluator::eval_scope(Scope& scope, Node* node)
   for (auto&& x : node->list) {
     ret = this->eval(x);
 
-    if (scope.is_skipped) {
+    if (scope.is_skipped)
       break;
-    }
+
+    if (!this->call_stack.empty() &&
+        this->get_cur_call_stack().is_returned)
+      break;
   }
 
   return ret ? ret : new ObjNone;
@@ -103,7 +106,7 @@ Object* Evaluator::eval(Node* node)
         Error(ERR_HereIsNotInsideOfFunc, node).emit().exit();
       }
 
-      return new ObjFunction(*this->call_stack.begin());
+      return new ObjFunction(this->call_stack.begin()->func);
     }
 
     case ND_Variable: {
@@ -122,16 +125,18 @@ Object* Evaluator::eval(Node* node)
     }
 
     //
-    // call function
+    // 関数呼び出し
     case ND_Callfunc: {
+      // 呼び出し先
       auto functor =
           (ObjFunction*)this->eval(node->nd_callfunc_functor);
 
-      // not a function
+      // 関数オブジェクトでないならエラー
       if (!functor->type.equals(TYPE_Function)) {
         Error(ERR_TypeMismatch, node->token).emit().exit();
       }
 
+      // 組み込み
       if (functor->is_builtin) {
         std::vector<Object*> args;
 
@@ -150,7 +155,7 @@ Object* Evaluator::eval(Node* node)
       auto callee = functor->func;
 
       // append call stack
-      this->call_stack.emplace_front(callee);
+      auto& cs = this->call_stack.emplace_front(callee);
 
       // create arguments
       for (auto formal = functor->func->list.begin();
@@ -162,6 +167,9 @@ Object* Evaluator::eval(Node* node)
       // check arguments
 
       auto result = this->eval(functor->func->nd_func_code);
+
+      if (cs.is_returned)
+        result = cs.result;
 
       this->leave_scope();
 
@@ -238,7 +246,8 @@ Object* Evaluator::eval(Node* node)
           auto objVector = (ObjVector*)objTarget;
 
           for (auto&& elem : objVector->elements) {
-            if (loopContext.is_breaked) break;
+            if (loopContext.is_breaked)
+              break;
 
             *p_iter_obj = elem;
 
@@ -273,11 +282,18 @@ Object* Evaluator::eval(Node* node)
     }
 
     case ND_Return: {
-      auto& scope = this->get_cur_scope();
+      if (this->call_stack.empty())
+        Error(ERR_CannotUseReturnHere, node).emit().exit();
 
-      TODO_IMPL
+      auto& cs = this->get_cur_call_stack();
 
-      break;
+      if (node->nd_return_expr) {
+        cs.result = this->eval(node->nd_return_expr);
+      }
+
+      cs.is_returned = true;
+
+      return nullptr;
     }
 
     case ND_Break:
@@ -329,8 +345,8 @@ Object* Evaluator::eval(Node* node)
     }
 
     case ND_Range: {
-      auto begin = (ObjLong*)this->eval(node->nd_lhs);
-      auto end = (ObjLong*)this->eval(node->nd_rhs);
+      auto begin = this->eval(node->nd_lhs);
+      auto end = this->eval(node->nd_rhs);
 
       if (!begin->type.equals(TYPE_Int))
         Error(ERR_TypeMismatch, node->nd_lhs)
@@ -344,14 +360,8 @@ Object* Evaluator::eval(Node* node)
             .emit()
             .exit();
 
-      if (begin->value >= end->value)
-        Error(ERR_InvalidRange, node)
-            .suggest(node->nd_rhs,
-                     "maximum value must bigger than minimum")
-            .emit()
-            .exit();
-
-      return new ObjRange(begin->value, end->value);
+      return new ObjRange(((ObjLong*)begin)->value,
+                          ((ObjLong*)end)->value);
     }
 
     case ND_Bigger:
@@ -422,7 +432,8 @@ Object* Evaluator::eval(Node* node)
                 break;
             }
 
-            if (item->kind == ND_NotEqual) result ^= 1;
+            if (item->kind == ND_NotEqual)
+              result ^= 1;
 
             break;
         }

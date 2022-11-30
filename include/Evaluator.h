@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <list>
 
 #include "types/Token.h"
@@ -98,6 +99,8 @@ class Evaluator {
   // get current scope
   Scope& get_cur_scope();
 
+  CallStack& get_cur_call_stack();
+
   //
   // continue current loop
   LoopContext& enter_for_loop(Node* node);
@@ -120,9 +123,11 @@ class Evaluator {
   void check_user_func_args(Node* node, Node* nd_func, Scope& scope);
 
   std::list<Scope> scope_stack;
-  std::list<Node*> call_stack;
+  std::list<CallStack> call_stack;
 
   std::list<LoopContext> loop_stack;
+
+  std::map<Node*, ObjFunction*> func_obj_map;
 
   MetroGC& _gc;
 };

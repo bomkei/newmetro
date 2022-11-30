@@ -32,6 +32,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_TooManyArguments, "too many arguments"},
     {ERR_SubscriptOutOfRange, "subscript out of range"},
     {ERR_InvalidRange, "invalid range"},
+    {ERR_CannotUseReturnHere, "cannot use 'return' here"},
 };
 
 static size_t err_emitted_count{};
@@ -39,7 +40,8 @@ static size_t err_emitted_count{};
 static char const* get_err_msg(ErrorKind kind)
 {
   for (auto&& [k, s] : error_msg_list) {
-    if (k == kind) return s;
+    if (k == kind)
+      return s;
   }
 
   TODO_IMPL
@@ -98,6 +100,10 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
     case ND_Function:
     case ND_Struct:
       TODO_IMPL;
+
+    case ND_Return:
+      return {node->token,
+              get_token_range(node->nd_return_expr).second};
 
     default:
       return {get_token_range(node->nd_lhs).first,
@@ -295,7 +301,8 @@ std::vector<Error::Suggestion*>* Error::_find_suggest(
     ErrLocation const& loc)
 {
   for (auto&& [l, sv] : this->suggest_map)
-    if (l.equals(loc)) return &sv;
+    if (l.equals(loc))
+      return &sv;
 
   return nullptr;
 }

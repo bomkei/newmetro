@@ -14,8 +14,9 @@
 
 #define nd_callfunc_functor uni_nd[0]
 
-#define nd_func_return_type uni_nd[0]
-#define nd_func_code uni_nd[1]
+#define nd_func_name uni_token
+#define nd_func_return_type uni_nd[1]
+#define nd_func_code uni_nd[2]
 
 #define nd_if_cond uni_nd[0]
 #define nd_if_true uni_nd[1]

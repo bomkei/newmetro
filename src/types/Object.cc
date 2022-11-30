@@ -6,13 +6,11 @@ Object::Object(Type const& type)
     : type(type),
       ref_count(1)
 {
-  alert;
   MetroGC::get_instance()->append(this);
 }
 
 Object::~Object()
 {
-  alert;
 }
 
 ObjNone::ObjNone()
