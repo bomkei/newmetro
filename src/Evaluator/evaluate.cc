@@ -166,10 +166,18 @@ Object* Evaluator::eval(Node* node)
 
       // check arguments
 
+      /*
       auto result = this->eval(functor->func->nd_func_code);
 
       if (cs.is_returned)
         result = cs.result;
+      */
+
+      this->eval(functor->func->nd_func_code);
+
+      assert(cs.is_returned);
+
+      auto result = cs.result;
 
       this->leave_scope();
 

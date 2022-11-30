@@ -48,7 +48,14 @@ Node* Parser::function()
       node->nd_func_return_type = this->expect_type();
     }
 
-    node->nd_func_code = this->expect_scope();
+    node->nd_func_code = this->expect_scope(true);
+
+    if (!node->nd_func_code->list.empty()) {
+      auto& last = *node->nd_func_code->list.rbegin();
+
+      if (last->kind != ND_None)
+        last = this->to_return_stmt(last);
+    }
 
     return node;
   }

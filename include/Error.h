@@ -24,6 +24,8 @@ enum ErrorKind {
   ERR_InvalidOperator,
   ERR_MultiplyStringByNegative,
 
+  ERR_MayNotToBeEvaluated,
+
   ERR_CannotUseReturnHere,
 
   ERR_IllegalFunctionCall,

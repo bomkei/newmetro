@@ -32,6 +32,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_TooManyArguments, "too many arguments"},
     {ERR_SubscriptOutOfRange, "subscript out of range"},
     {ERR_InvalidRange, "invalid range"},
+    {ERR_MayNotToBeEvaluated, "expression may not to be evaluated"},
     {ERR_CannotUseReturnHere, "cannot use 'return' here"},
 };
 
@@ -92,12 +93,33 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
               get_token_range(*node->list.rbegin()).second};
     }
 
-    case ND_If:
+    case ND_If: {
+      if (auto nd_else = node->nd_if_false; nd_else) {
+        while (nd_else && nd_else->kind == ND_If)
+          nd_else = nd_else->nd_if_false;
+
+        return {node->token, get_token_range(nd_else).second};
+      }
+
+      return {node->token, get_token_range(node->nd_if_true).second};
+    }
+
     case ND_For:
     case ND_While:
     case ND_Let:
-    case ND_Scope:
+      TODO_IMPL;
+
+    case ND_Scope: {
+      if (node->list.empty())
+        return {node->token, node->token->next};
+
+      return {node->token,
+              get_token_range(*node->list.rbegin()).second->next};
+    }
+
     case ND_Function:
+      TODO_IMPL;
+
     case ND_Struct:
       TODO_IMPL;
 
@@ -259,6 +281,13 @@ std::string Error::create_showing_text(ErrLocation const& loc,
      << COL_DEFAULT << "       |" << std::endl;
 
   for (auto linenum = loc.linenum; auto&& line : trimmed) {
+    if (trimmed.size() >= 6 && linenum >= loc.linenum + 2 &&
+        linenum <= loc.linenum + trimmed.size() - 2) {
+      line.clear();
+      linenum++;
+      continue;
+    }
+
     line = Utils::format(COL_DEFAULT "%6d | " COL_DEFAULT, linenum) +
            line;
 
@@ -288,7 +317,17 @@ std::string Error::create_showing_text(ErrLocation const& loc,
     }
   }
 
-  for (auto&& line : trimmed) {
+  for (auto b = false; auto&& line : trimmed) {
+    if (line.empty()) {
+      if (!b) {
+        ss << COL_DEFAULT << "      ..."
+           << COL_ERR_CYAN_UNDERLINE_BOLD_BRIGHT << std::endl;
+        b = true;
+      }
+
+      continue;
+    }
+
     ss << line << std::endl;
   }
 
