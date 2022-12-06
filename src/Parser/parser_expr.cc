@@ -28,8 +28,12 @@ Node* Parser::atom()
 
       switch (this->cur->imm_kind) {
         case TYPE_Int:
-          node->nd_value =
-              new ObjLong(std::stoi(this->cur->str.data()));
+          try {
+            node->nd_value =
+                new ObjLong(std::stoll(this->cur->str.data()));
+          } catch (const std::out_of_range&) {
+            Error(ERR_ValueOutOfRange, this->cur).emit().exit();
+          }
 
           break;
 

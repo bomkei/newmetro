@@ -29,6 +29,7 @@ enum ErrorKind {
   ERR_TooManyArguments,
 
   ERR_SubscriptOutOfRange,
+  ERR_ValueOutOfRange,
 };
 
 struct Token;
