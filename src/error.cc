@@ -100,8 +100,9 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
       TODO_IMPL;
 
     default:
-      return {get_token_range(node->nd_lhs).first,
-              get_token_range(node->nd_rhs).second};
+      auto first = get_token_range(node->nd_lhs).first;
+      auto second = get_token_range(node->nd_rhs).second;
+      return {first != nullptr ? first : node->token, second};
   }
 
   return {node->token, node->token};
