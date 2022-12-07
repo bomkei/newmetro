@@ -24,9 +24,15 @@ enum ErrorKind {
   ERR_InvalidOperator,
   ERR_MultiplyStringByNegative,
 
+  ERR_MayNotToBeEvaluated,
+
+  ERR_CannotUseReturnHere,
+
   ERR_IllegalFunctionCall,
   ERR_TooFewArguments,
   ERR_TooManyArguments,
+
+  ERR_InvalidRange,
 
   ERR_SubscriptOutOfRange,
   ERR_ValueOutOfRange,

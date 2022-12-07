@@ -56,6 +56,20 @@ Object*& Evaluator::get_var(Token* name)
     }
   }
 
+  // find func and create func obj
+  for (auto&& scope : this->scope_stack) {
+    for (auto&& x : scope.node->list) {
+      if (x->kind == ND_Function &&
+          x->nd_func_name->str == name->str) {
+        if (this->func_obj_map.contains(x)) {
+          return (Object*&)this->func_obj_map[x];
+        }
+
+        return (Object*&)this->func_obj_map[x] = new ObjFunction(x);
+      }
+    }
+  }
+
   Error(ERR_UndefinedVariable, name).emit().exit();
 }
 
@@ -97,6 +111,11 @@ void Evaluator::loop_break()
 Evaluator::Scope& Evaluator::get_cur_scope()
 {
   return *this->scope_stack.begin();
+}
+
+Evaluator::CallStack& Evaluator::get_cur_call_stack()
+{
+  return *this->call_stack.begin();
 }
 
 void Evaluator::check_user_func_args(Node* node, Node* nd_func,

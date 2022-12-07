@@ -59,8 +59,25 @@ Node* Parser::expect_type()
   return node;
 }
 
-Node* Parser::expect_scope(std::function<Node*(Parser*)> chi)
+Node* Parser::expect_scope(bool is_func_scope,
+                           std::function<Node*(Parser*)> chi)
 {
+  /*
+  static auto new_return = [&](Node* x) -> Node* {
+    if (!is_func_scope)
+      return x;
+
+    if (x->kind != ND_Return) {
+      auto y = new Node(ND_Return, x->token);
+
+      y->nd_return_expr = x;
+      x = y;
+    }
+
+    return x;
+  };
+  */
+
   auto node = new Node(ND_Scope, this->cur);
 
   this->expect("{");
@@ -73,9 +90,10 @@ Node* Parser::expect_scope(std::function<Node*(Parser*)> chi)
   while (this->check()) {
     auto& item = node->list.emplace_back(chi(this));
 
-    if (this->eat(";") || this->cur->prev->str == ";") {
+    if (auto semi = this->cur;
+        this->eat(";") || (semi = this->cur->prev)->str == ";") {
       if (this->eat("}")) {
-        node->list.emplace_back(new Node(ND_None));
+        node->list.emplace_back(new Node(ND_None, semi));
         return node;
       }
 
@@ -92,6 +110,50 @@ Node* Parser::expect_scope(std::function<Node*(Parser*)> chi)
   }
 
   Error(ERR_BracketNotClosed, node->token).emit().exit();
+}
+
+//
+// ------------------------------------------------
+//  ノードを return 文に変換する
+//  関数スコープ内の最後の要素にだけ使ってください
+// ------------------------------------------------
+Node* Parser::to_return_stmt(Node* node)
+{
+  switch (node->kind) {
+    case ND_Return:
+      return node;
+
+    //
+    // if 文
+    case ND_If: {
+      //
+      // else がある場合は、if 文で戻り値が確定するか確認する
+      if (auto nd_else = node->nd_if_false; nd_else) {
+        while (nd_else->kind == ND_If && nd_else->nd_if_false) {
+          nd_else = nd_else->nd_if_false;
+        }
+
+        //
+        // 最後が else if で終わっていればエラー
+        if (nd_else && nd_else->kind == ND_If) {
+          Error(ERR_MayNotToBeEvaluated, node->token)
+              .suggest(nd_else,
+                       "the condition of if-statement must evalaute "
+                       "to true")
+              .emit()
+              .exit();
+        }
+      }
+
+      break;
+    }
+  }
+
+  auto nd_ret = new Node(ND_Return, node->token);
+
+  nd_ret->nd_return_expr = node;
+
+  return nd_ret;
 }
 
 bool Parser::eat_semi()

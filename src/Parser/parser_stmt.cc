@@ -11,43 +11,6 @@
 Node* Parser::statement()
 {
   //
-  // function
-  if (this->eat("fn")) {
-    auto node = new Node(ND_Function, this->ate);
-
-    this->expect("(");
-
-    if (!this->eat(")")) {
-      do {
-        auto& arg =
-            node->list.emplace_back(new Node(ND_Argument, this->cur));
-
-        if (this->eat("...")) {
-          arg->kind = ND_VariableArguments;
-          arg->nd_arg_name = this->expect_ident();
-          break;
-        }
-
-        arg->nd_arg_name = this->expect_ident();
-
-        if (this->eat(":")) {
-          arg->nd_arg_type = this->expect_type();
-        }
-      } while (this->eat(","));
-
-      this->expect(")");
-    }
-
-    if (this->eat("->")) {
-      node->nd_func_return_type = this->expect_type();
-    }
-
-    node->nd_func_code = this->expect_scope();
-
-    return node;
-  }
-
-  //
   // if
   if (this->eat("if")) {
     auto node = new Node(ND_If, this->ate);
