@@ -14,6 +14,9 @@
 
 #if METRO_DEBUG
 
+#include <iostream>
+#include <cstdio>
+
 #define __FILE_EX__ __file_ex_fn__(__FILE__, "src")
 
 // alert

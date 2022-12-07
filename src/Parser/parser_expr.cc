@@ -31,7 +31,8 @@ Node* Parser::atom()
           try {
             node->nd_value =
                 new ObjLong(std::stoll(this->cur->str.data()));
-          } catch (const std::out_of_range&) {
+          }
+          catch (const std::out_of_range&) {
             Error(ERR_ValueOutOfRange, this->cur).emit().exit();
           }
 
@@ -214,8 +215,20 @@ Node* Parser::member_access()
 
 Node* Parser::unary()
 {
-  // unary declement
+  // unary minus
   if (this->eat("-")) {
+    if (this->cur->kind == TOK_Immediate &&
+        this->cur->imm_kind == TYPE_Int) {
+      auto nd = this->new_value_nd(
+          new ObjLong(std::stoll(this->ate->str.data())));
+
+      nd->token = this->ate;
+
+      this->next();
+
+      return nd;
+    }
+
     return new Node(ND_Sub, this->ate,
                     this->new_value_nd(new ObjLong(0)),
                     this->member_access());
