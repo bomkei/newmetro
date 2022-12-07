@@ -2,6 +2,7 @@
 
 #include <map>
 #include <list>
+#include <limits>
 
 #include "types/Token.h"
 #include "types/Object.h"

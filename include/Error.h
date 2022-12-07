@@ -35,6 +35,7 @@ enum ErrorKind {
   ERR_InvalidRange,
 
   ERR_SubscriptOutOfRange,
+  ERR_ValueOutOfRange,
 };
 
 struct Token;

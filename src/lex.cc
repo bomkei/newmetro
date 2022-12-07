@@ -172,7 +172,7 @@ Token* Lexer::lex()
 
       for (auto&& pu : long_punctuators) {
         if ((len = this->match(pu)) != -1) {
-          str = pu;
+          // str = pu;
           this->position += len;
 
           goto _found;
@@ -183,7 +183,7 @@ Token* Lexer::lex()
                              this->peek());
           r != std::end(punctuators)) {
         cur->kind = TOK_Punctuator;
-        str = r;
+        // str = r;
         len = 1;
         this->position++;
         goto _found;

@@ -8,6 +8,24 @@
 
 #define nd_kind_expr_begin ND_Add
 
+template <class T> bool is_overflow(NodeKind kind, T a, T b) {
+  switch (kind) {
+  case ND_Add:
+    return (a > 0 && b > 0 && a > std::numeric_limits<T>::max() - b) ||
+           (a < 0 && b < 0 && a < std::numeric_limits<T>::min() - b);
+  case ND_Sub:
+    return (a > 0 && b < 0 && a > std::numeric_limits<T>::max() + b) ||
+           (a < 0 && b > 0 && a < std::numeric_limits<T>::min() + b);
+  case ND_Mul:
+    return (a > 0 && b > 0 && a > std::numeric_limits<T>::max() / b) ||
+           (a > 0 && b < 0 && b < std::numeric_limits<T>::min() / a) ||
+           (a < 0 && b > 0 && a < std::numeric_limits<T>::min() / b) ||
+           (a < 0 && b < 0 && b < std::numeric_limits<T>::max() / a);
+  default:
+    return false;
+  }
+}
+
 Object* Evaluator::compute_expr(Node* node, Object* lhs, Object* rhs)
 {
 #define done goto finish
@@ -15,6 +33,9 @@ Object* Evaluator::compute_expr(Node* node, Object* lhs, Object* rhs)
 
 #define must(x, T) \
   if (!x.equals(T)) Error(ERR_TypeMismatch, node).emit().exit()
+
+#define check_overflow(kind, a, b) \
+  if (is_overflow(kind, a, b)) Error(ERR_ValueOutOfRange, node).emit().exit()
 
   static constexpr void* jump_table[] = {
       &&expr_add,
@@ -66,14 +87,18 @@ Object* Evaluator::compute_expr(Node* node, Object* lhs, Object* rhs)
 expr_add:
   switch (typekind) {
     case TYPE_Int:
+      check_overflow(ND_Add, ((ObjLong*)lhs)->value, ((ObjLong*)rhs)->value);
       ((ObjLong*)result)->value += ((ObjLong*)rhs)->value;
       done;
 
     case TYPE_Float:
+      check_overflow(ND_Add, ((ObjFloat*)lhs)->value, ((ObjFloat*)rhs)->value);
       ((ObjFloat*)result)->value += ((ObjFloat*)rhs)->value;
       done;
 
     case TYPE_String:
+      check_overflow(ND_Add, ((ObjString*)lhs)->value.size(),
+                     ((ObjString*)rhs)->value.size());
       ((ObjString*)result)->value += ((ObjString*)rhs)->value;
       done;
   }
@@ -82,10 +107,12 @@ expr_add:
 expr_sub:
   switch (typekind) {
     case TYPE_Int:
+      check_overflow(ND_Sub, ((ObjLong*)lhs)->value, ((ObjLong*)rhs)->value);
       ((ObjLong*)result)->value -= ((ObjLong*)rhs)->value;
       done;
 
     case TYPE_Float:
+      check_overflow(ND_Sub, ((ObjFloat*)lhs)->value, ((ObjFloat*)rhs)->value);
       ((ObjFloat*)result)->value -= ((ObjFloat*)rhs)->value;
       done;
   }
@@ -94,10 +121,12 @@ expr_sub:
 expr_mul:
   switch (typekind) {
     case TYPE_Int:
+      check_overflow(ND_Mul, ((ObjLong*)lhs)->value, ((ObjLong*)rhs)->value);
       ((ObjLong*)result)->value *= ((ObjLong*)rhs)->value;
       done;
 
     case TYPE_Float:
+      check_overflow(ND_Mul, ((ObjFloat*)lhs)->value, ((ObjFloat*)rhs)->value);
       ((ObjFloat*)result)->value *= ((ObjFloat*)rhs)->value;
       done;
   }

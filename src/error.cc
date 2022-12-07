@@ -34,6 +34,7 @@ static constexpr std::pair<ErrorKind, char const*> error_msg_list[]{
     {ERR_InvalidRange, "invalid range"},
     {ERR_MayNotToBeEvaluated, "expression may not to be evaluated"},
     {ERR_CannotUseReturnHere, "cannot use 'return' here"},
+    {ERR_ValueOutOfRange, "value out of range"},
 };
 
 static size_t err_emitted_count{};
@@ -128,8 +129,9 @@ static std::pair<Token*, Token*> get_token_range(Node* node)
               get_token_range(node->nd_return_expr).second};
 
     default:
-      return {get_token_range(node->nd_lhs).first,
-              get_token_range(node->nd_rhs).second};
+      auto first = get_token_range(node->nd_lhs).first;
+      auto second = get_token_range(node->nd_rhs).second;
+      return {first != nullptr ? first : node->token, second};
   }
 
   return {node->token, node->token};
