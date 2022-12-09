@@ -11,3 +11,8 @@ jobs:
     - run: make -j
       env:
         TERM: xterm-256color
+    - uses: sinshutu/upload-to-discord@master
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      with:
+        args: metro
