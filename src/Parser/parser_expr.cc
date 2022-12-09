@@ -8,7 +8,7 @@
 
 Node* Parser::atom()
 {
-  if (this->eat("@")) {
+  if (this->eat("self")) {
     return new Node(ND_SelfFunc, this->ate);
   }
 
@@ -28,13 +28,7 @@ Node* Parser::atom()
 
       switch (this->cur->imm_kind) {
         case TYPE_Int:
-          try {
-            node->nd_value =
-                new ObjLong(std::stoll(this->cur->str.data()));
-          }
-          catch (const std::out_of_range&) {
-            Error(ERR_ValueOutOfRange, this->cur).emit().exit();
-          }
+          node->nd_value = this->check_value_range(this->cur);
 
           break;
 
@@ -219,8 +213,8 @@ Node* Parser::unary()
   if (this->eat("-")) {
     if (this->cur->kind == TOK_Immediate &&
         this->cur->imm_kind == TYPE_Int) {
-      auto nd = this->new_value_nd(
-          new ObjLong(std::stoll(this->ate->str.data())));
+      auto nd =
+          this->new_value_nd(this->check_value_range(this->ate));
 
       nd->token = this->ate;
 

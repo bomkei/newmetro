@@ -59,25 +59,8 @@ Node* Parser::expect_type()
   return node;
 }
 
-Node* Parser::expect_scope(bool is_func_scope,
-                           std::function<Node*(Parser*)> chi)
+Node* Parser::expect_scope(std::function<Node*(Parser*)> chi)
 {
-  /*
-  static auto new_return = [&](Node* x) -> Node* {
-    if (!is_func_scope)
-      return x;
-
-    if (x->kind != ND_Return) {
-      auto y = new Node(ND_Return, x->token);
-
-      y->nd_return_expr = x;
-      x = y;
-    }
-
-    return x;
-  };
-  */
-
   auto node = new Node(ND_Scope, this->cur);
 
   this->expect("{");
@@ -137,9 +120,9 @@ Node* Parser::to_return_stmt(Node* node)
         // 最後が else if で終わっていればエラー
         if (nd_else && nd_else->kind == ND_If) {
           Error(ERR_MayNotToBeEvaluated, node->token)
-              .suggest(nd_else,
-                       "the condition of if-statement must evalaute "
-                       "to true")
+              // .suggest(nd_else,
+              //          "the condition of if-statement must evalaute
+              //          " "to true")
               .emit()
               .exit();
         }
@@ -154,6 +137,17 @@ Node* Parser::to_return_stmt(Node* node)
   nd_ret->nd_return_expr = node;
 
   return nd_ret;
+}
+
+Object* Parser::check_value_range(Token* token)
+{
+  try {
+    return new ObjLong(std::stoll(token->str.data()));
+  }
+  catch (...) {
+  }
+
+  Error(ERR_ValueOutOfRange, token).emit().exit();
 }
 
 bool Parser::eat_semi()

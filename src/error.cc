@@ -304,7 +304,8 @@ std::string Error::create_showing_text(ErrLocation const& loc,
 
     for (auto&& [L, SV] : this->suggest_map) {
       for (auto&& S : SV) {
-        if (loc.begin <= L.begin && L.end <= loc.end) {
+        if (L.token != loc.token && loc.begin <= L.begin &&
+            L.end <= loc.end) {
           auto linepos = L.end - std::get<1>(source.get_line(L.end));
 
           trimmed[ix][8 + linepos] = '~';

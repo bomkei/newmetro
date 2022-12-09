@@ -69,10 +69,11 @@ class Parser {
   Node* expect_type();
 
   Node* expect_scope(
-      bool is_func_scope = false,
       std::function<Node*(Parser*)> chi = &Parser::expr);
 
   Node* to_return_stmt(Node* node);
+
+  Object* check_value_range(Token* token);
 
   bool eat_semi();
   void expect_semi();
