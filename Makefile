@@ -10,6 +10,7 @@ TOPDIR	?= $(CURDIR)
 BUILD		= build
 INCLUDE	= include
 SOURCES	= src \
+	src/Compiler \
 	src/Evaluator \
 	src/Parser \
 	src/types
