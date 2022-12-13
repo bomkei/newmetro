@@ -4,6 +4,8 @@ enum AsmKind {
   ASM_Mov,
   ASM_Loadi,
 
+  ASM_Cmp,
+
   ASM_Add,
   ASM_Sub,
   ASM_Mul,
@@ -16,4 +18,20 @@ enum AsmKind {
   ASM_Label,
 };
 
-struct Asm {};
+struct Object;
+
+struct Asm {
+  AsmKind kind;
+
+  int8_t reg_dest;
+  int8_t reg_src;
+
+  size_t jump_to;
+
+  Object* object;
+
+  Asm(AsmKind kind);
+  Asm(AsmKind kind, int8_t reg_dest, int8_t reg_src);
+
+  std::string to_string() const;
+};

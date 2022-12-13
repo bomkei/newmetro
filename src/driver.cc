@@ -4,6 +4,10 @@
 #include "Driver.h"
 #include "GC.h"
 
+#include "Compiler/Compiler.h"
+
+#include "Utils.h"
+
 static Driver* __inst;
 
 Driver::Driver()
@@ -23,11 +27,25 @@ Object* Driver::execute_script()
 
   auto node = parser.parse();
 
-  Evaluator eval{gc};
+  Compiler compiler;
 
-  auto obj = eval.eval(node);
+  compiler.compile_node(node);
 
-  return obj;
+  auto const& codes = compiler.get_compiled_codes();
+
+  for (auto&& op : codes) {
+    alertios(op.to_string());
+  }
+
+  exit(1);
+
+  return nullptr;
+
+  // Evaluator eval{gc};
+
+  // auto obj = eval.eval(node);
+
+  // return obj;
 }
 
 int Driver::main(int argc, char** argv)
